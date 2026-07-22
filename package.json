@@ -1,0 +1,41 @@
+{
+  "dependencies": {
+    "axios": "^1.18.0",
+    "cors": "^2.8.6",
+    "docxtemplater": "^3.68.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.7.1",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "mysql2": "^3.22.5",
+    "pg": "^8.22.0",
+    "pg-hstore": "^2.3.4",
+    "pizzip": "^3.2.0",
+    "sequelize": "^6.37.8"
+  },
+  "name": "speeddocument",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest --watchAll --verbose"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quekhoait/SpeedDocument.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/quekhoait/SpeedDocument/issues"
+  },
+  "homepage": "https://github.com/quekhoait/SpeedDocument#readme"
+}
