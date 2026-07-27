@@ -38,9 +38,24 @@ const AuthMethod = sequelize.define('AuthMethod', {
     timestamps: true
 });
 
+const RefreshToken = sequelize.define('RefreshToken', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    userId: { type: DataTypes.INTEGER, allowNull: false, references: {
+            model: 'users',
+            key: 'id'
+        },
+        onDelete: 'CASCADE'
+    },
+    refreshToken: { type: DataTypes.TEXT, allowNull: false }
+}, {
+    tableName: 'refresh_tokens',
+    timestamps: true
+});
 
 User.hasMany(AuthMethod, { foreignKey: 'userId', as: 'authMethods' });
 AuthMethod.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(RefreshToken, { foreignKey: 'userId', as: 'refreshTokens' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 
-export { User, AuthMethod };
+export { User, AuthMethod, RefreshToken };

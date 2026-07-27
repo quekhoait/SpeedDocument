@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import authRouter from './routers/AuthRouter.js';
 import { sequelize, createDatabaseIfNotExists } from './config.js';
 
@@ -7,6 +8,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api/auth', authRouter);
 
 const PORT = 5000;
@@ -17,8 +19,8 @@ const startServer = async () => {
         await sequelize.authenticate();
         console.log('Kết nối database thành công.');
 
-        await sequelize.sync({ force: true });
-        console.log('Đồng bộ hóa các model thành công. Các bảng đã được cập nhật!');
+        await sequelize.sync();
+        console.log('Đồng bộ hóa các model thành công. Các bảng đã được giữ nguyên!');
 
         app.listen(PORT, () => {
             console.log(`=> [Server]: Hệ thống đang chạy tại đường dẫn: http://localhost:${PORT}`);
