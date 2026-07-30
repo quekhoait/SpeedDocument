@@ -2,14 +2,23 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRouter from './routers/AuthRouter.js';
+import templateRouter from './routers/TemplateRouter.js';
+// import uploadRouter from './routers/UploadRouter.js';
 import { sequelize, createDatabaseIfNotExists } from './config.js';
+import './models/AuthModel.js';
+import './models/DocumentModel.js';
+import './models/TemplateModel.js'; 
+
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+
 app.use('/api/auth', authRouter);
+app.use('/api/templates', templateRouter);
+
 
 const PORT = 5000;
 

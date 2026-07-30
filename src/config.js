@@ -1,5 +1,9 @@
+import dotenv from 'dotenv';
 import { Sequelize } from 'sequelize';
 import { Client } from 'pg';
+import { v2 as cloudinary } from 'cloudinary';
+
+dotenv.config();
 
 const DB_NAME = 'document';
 const DB_USER = 'postgres';
@@ -38,5 +42,38 @@ const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
     timezone: '+07:00',
 });
 
-export { sequelize, createDatabaseIfNotExists };
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const uploadToCloudinary = async (fileBuffer, options = {}) => {
+    const { folder = 'speed-document', resource_type = 'auto', public_id } = options;
+
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        throw new Error('Cloudinary chưa được cấu hình. Vui lòng thêm CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY và CLOUDINARY_API_SECRET vào file .env');
+    }
+
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder,
+                resource_type,
+                public_id,
+            },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                resolve(result);
+            }
+        );
+
+        stream.end(fileBuffer);
+    });
+};
+
+export { sequelize, createDatabaseIfNotExists, cloudinary, uploadToCloudinary };
 export default sequelize;
