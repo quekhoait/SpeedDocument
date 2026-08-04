@@ -17,6 +17,7 @@ const Template = sequelize.define('Template', {
   description: { type: DataTypes.TEXT, allowNull: true },
   is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   template_category_id: { type: DataTypes.INTEGER, allowNull: true },
+  template_vector: { type: DataTypes.JSON, allowNull: true },
 }, {
   tableName: 'template',
   timestamps: true,

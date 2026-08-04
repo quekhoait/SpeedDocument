@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRouter from './routers/AuthRouter.js';
 import templateRouter from './routers/TemplateRouter.js';
+import documentRouter from './routers/DocumentRouter.js';
 // import uploadRouter from './routers/UploadRouter.js';
 import { sequelize, createDatabaseIfNotExists } from './config.js';
 import './models/AuthModel.js';
@@ -18,6 +19,7 @@ app.use(cookieParser());
 
 app.use('/api/auth', authRouter);
 app.use('/api/templates', templateRouter);
+app.use('/api/documents', documentRouter);
 
 
 const PORT = 5000;
