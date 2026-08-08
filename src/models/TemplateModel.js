@@ -1,5 +1,8 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config.js';
+import pgvector from 'pgvector/sequelize';
+
+pgvector.registerTypes(sequelize);
 
 const TemplateCategory = sequelize.define('TemplateCategory', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -17,7 +20,7 @@ const Template = sequelize.define('Template', {
   description: { type: DataTypes.TEXT, allowNull: true },
   is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   template_category_id: { type: DataTypes.INTEGER, allowNull: true },
-  template_vector: { type: DataTypes.JSON, allowNull: true },
+  template_vector: { type: DataTypes.VECTOR(384), allowNull: true },
 }, {
   tableName: 'template',
   timestamps: true,
@@ -29,7 +32,7 @@ const TemplateField = sequelize.define('TemplateField', {
   field_key: { type: DataTypes.STRING(45), allowNull: false },
   field_label: { type: DataTypes.STRING(100), allowNull: false },
   field_type: { type: DataTypes.STRING(45), allowNull: false },
-  field_vector: { type: DataTypes.JSON, allowNull: true },
+  field_vector: { type: DataTypes.VECTOR(384), allowNull: true },
   }, {
   tableName: 'template_fields',
   timestamps: false,

@@ -7,11 +7,10 @@ import {
   TemplateFieldMapping,
 } from "../models/TemplateModel.js";
 import { generateLocalVector } from "../utils/embedding.js";
-import { v2 as cloudinary } from "cloudinary";
-import streamifier from "streamifier";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import InspectModule from "docxtemplater/js/inspect-module.js";
+import CloudServices from "./CloudServices.js";
 
 const createCategoryTemplate = async (data) => {
   const { name, description } = data;
@@ -93,77 +92,78 @@ const getTemplateById = async (id) => {
   });
 };
 
-const uploadToCloudinary = (fileBuffer) => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "templates",
-        resource_type: "raw", // Bắt buộc cho file Word (.docx)
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      },
-    );
-    streamifier.createReadStream(fileBuffer).pipe(stream);
-  });
-};
+
 
 const createTemplate = async (data) => {
   const { name, description, categoryId, fileBuffer, fields = [] } = data;
-  const cloudResult = await uploadToCloudinary(fileBuffer);
+
+  const cloudResult = await CloudServices.uploadToCloudinary(fileBuffer);
   const file_path = cloudResult.secure_url;
+
   const t = await sequelize.transaction();
-  const vectorData = await generateLocalVector(description);
-  const newTemplate = await Template.create(
-    {
-      name,
-      description,
-      template_category_id: categoryId,
-      file_path: file_path,
-      is_active: true,
-      template_vector: vectorData,
-    },
-    { transaction: t },
-  );
 
-  if (fields.length > 0) {
-    for (const item of fields) {
-      const labelToEmbed = item.field_label;
-      const vectorData = await generateLocalVector(labelToEmbed);
+  try {
+    const vectorData = await generateLocalVector(description);
+    const newTemplate = await Template.create(
+      {
+        name,
+        description,
+        template_category_id: categoryId,
+        file_path: file_path,
+        is_active: true,
+        template_vector: vectorData,
+      },
+      { transaction: t }
+    );
 
-      const [fieldObj, created] = await TemplateField.findOrCreate({
-        where: { field_key: item.field_key },
-        defaults: {
-          field_key: item.field_key,
-          field_label: labelToEmbed,
-          field_type: item.field_type || "text",
-          field_vector: vectorData,
-        },
-        transaction: t,
-      });
-
-      if (!created && !fieldObj.field_vector && vectorData) {
-        await fieldObj.update({ field_vector: vectorData }, { transaction: t });
-      }
-
-      await TemplateFieldMapping.create(
-        {
-          template_id: newTemplate.id,
-          template_fields_id: fieldObj.id,
-          placeholder: `{{${item.field_key}}}`,
-          is_required: item.is_required || false,
-          prompt_text: item.prompt_text || `Nhập giá trị cho ${labelToEmbed}`,
-        },
-        { transaction: t },
+    if (fields.length > 0) {
+      const uniqueFields = Array.from(
+        new Map(fields.map((f) => [f.field_key, f])).values()
       );
+
+      for (const item of uniqueFields) {
+        let fieldObj = await TemplateField.findOne({
+          where: { field_key: item.field_key },
+          transaction: t,
+        });
+
+        if (!fieldObj) {
+          const labelToEmbed = item.field_label || item.field_key;
+          const fieldVector = await generateLocalVector(labelToEmbed);
+
+          fieldObj = await TemplateField.create(
+            {
+              field_key: item.field_key,
+              field_label: labelToEmbed,
+              field_type: item.field_type || "text",
+              field_vector: fieldVector,
+            },
+            { transaction: t }
+          );
+        }
+
+        await TemplateFieldMapping.create(
+          {
+            template_id: newTemplate.id,
+            template_fields_id: fieldObj.id,
+            placeholder: `{{${item.field_key}}}`,
+            is_required: item.is_required || false,
+            prompt_text: item.prompt_text || `Nhập giá trị cho ${item.field_label}`,
+          },
+          { transaction: t }
+        );
+      }
     }
+
+    await t.commit();
+    return await getTemplateById(newTemplate.id);
+
+  } catch (error) {
+    await t.rollback();
+    console.error("Lỗi khi tạo Template:", error);
+    throw error;
   }
-
-  await t.commit();
-  return await getTemplateById(newTemplate.id);
 };
-
 const updateField = async (data) => {
   const { id, field_key, field_label, field_type } = data;
 

@@ -34,7 +34,7 @@ const previewTemplateFields = async (req, res) => {
       });
     }
     const fieldsPreview =
-      await TemplateService.previewTemplateFields(fileBuffer);
+      await TemplateService.previewFieldsFromWord(fileBuffer);
     return res.status(200).json({
       status: "OK",
       message: "Trích xuất danh sách field thành công",

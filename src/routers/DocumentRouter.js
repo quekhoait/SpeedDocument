@@ -4,7 +4,7 @@ import { uploadSingle } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
-router.post('/create-document', DocumentController.createDocument);
+router.post('/create-document', DocumentController.processDocumentChat);
 
 
 
