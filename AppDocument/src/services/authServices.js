@@ -1,0 +1,26 @@
+import { Apis, authApis, endpoints } from "../configs/Apis"
+
+
+export const authService = {
+    registerWithEmail: async (data) => {
+        return await Apis().post(endpoints.email_register, data);
+    },
+
+    sendOtp: async (email) => {
+        return await Apis().post(endpoints.send_otp, {email})
+    },
+
+    loginWithEmail: async (data) => {
+        return await Apis(data).post(endpoints.email_login, data)
+    },
+
+    currentUser: async (token) => {
+        return await authApis(token).get(endpoints.get_user);
+    },
+
+    refreshToken: async (token) => {
+        return await authApis(token).get(endpoints.refresh_token)
+    }
+
+   
+}
