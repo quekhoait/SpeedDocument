@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigation } from '@react-navigation/native';
 import {
   Text,
   View,
@@ -7,15 +8,20 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { Searchbar } from "react-native-paper";
 import Base from "../layout/Base";
 import TemplateItem from "../components/HomeComponents/TemplateItem";
 import { templateService } from "../services/templateServices";
+import TemplatePreviewModal from "./PreviewScreen";
 
 const ALL_CATEGORY = { id: "ALL", name: "Tất cả" };
 
 const HomeScreen = () => {
+
+  const navigation = useNavigation();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState([ALL_CATEGORY]);
   const [templates, setTemplates] = useState([]);
@@ -67,6 +73,18 @@ const HomeScreen = () => {
   useEffect(() => {
     fetchTemplates(selectedCategoryId);
   }, [selectedCategoryId]);
+
+  const handleDetailTemplate = (previewUrl, title = 'Đơn xin nghỉ việc') => {
+  if (!previewUrl) {
+    Alert.alert('Thông báo', 'Mẫu này chưa có đường dẫn xem trước.');
+    return;
+  }
+
+  navigation.navigate('preview', {
+    previewUrl: previewUrl,
+    title: title,
+  });
+};
 
   // const filteredTemplates = useMemo(() => {
   //   if (!searchQuery.trim()) return templates;
@@ -172,6 +190,7 @@ const HomeScreen = () => {
             }
             renderItem={({ item }) => (
               <TemplateItem
+              onPress={()=>handleDetailTemplate(item.previewUrl)}
                 name={item.name}
                 description={item.description}
                 category={item.categoryId || item.category?.name}

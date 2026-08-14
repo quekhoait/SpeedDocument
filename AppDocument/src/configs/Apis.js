@@ -7,10 +7,13 @@ export const endpoints = {
     'get_user': '/auth/user',
     'refresh_token': '/auth/refresh-token',
     'log_out': '/auth/log_out',
+    'save_signature': '/auth/save-signature',
+    'update': '/auth/update',
 
     'get_all_category': '/templates/get_categories',
     'get_template': (id) => (id && id !== 'ALL') ? `/templates/category/${id}` : '/templates/category',
 
+    'create_document': '/documents/create-document'
 
 };
 

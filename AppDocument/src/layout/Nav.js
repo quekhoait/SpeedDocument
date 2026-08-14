@@ -4,6 +4,7 @@ import { Home, FileText, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { AuthContext } from '../context/AuthContext'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const NAV_ITEMS = [
   { id: 0, label: 'Trang chủ', icon: Home, link: 'home' },
@@ -22,6 +23,7 @@ const Nav = ({ activeTab = 0 }) => {
 
     if (item.id === 2) {
       if (currentUser) {
+        console.log(1)
         navigation.navigate('profile')
       } else {
         navigation.navigate('register') 

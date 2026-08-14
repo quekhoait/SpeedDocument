@@ -1,42 +1,70 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, FlatList } from 'react-native';
+import React, { useState, useRef, useContext } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
 import SignatureCanvas from 'react-native-signature-canvas';
-import { CheckCircle2, RotateCcw, Trash2, Image as ImageIcon } from 'lucide-react-native';
+import { CheckCircle2, RotateCcw, Image as ImageIcon } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import Base from '../layout/Base';
 import SignatureItem from '../components/SignatureItem';
+import { authService } from '../services/authServices';
+import { AuthContext } from '../context/AuthContext';
 
-const SignatureScreen = () => {
+const SignatureScreen = ({ navigation }) => {
   const signatureRef = useRef(null);
-  
   const [savedSignatures, setSavedSignatures] = useState([]);
 
-  const handleOK = (signatureImageBase64) => {
-    const newSignature = {
-      id: Date.now().toString(),
-      imageUri: signatureImageBase64,
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+  const { currentUser } = useContext(AuthContext);
 
-    setSavedSignatures((prev) => [newSignature, ...prev]);
-  };
-
-  const handleSave = () => {
+  const handleTriggerSave = () => {
     if (signatureRef.current) {
       signatureRef.current.readSignature(); 
     }
   };
 
+  const handleOK = async (signatureImageBase64) => {
+    if (!signatureImageBase64) {
+      Alert.alert('Thông báo', 'Vui lòng vẽ chữ ký trước khi xuất!');
+      return;
+    }
+
+    const newSignature = {
+      id: Date.now().toString(),
+      imageUri: signatureImageBase64,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setSavedSignatures((prev) => [newSignature, ...prev]);
+
+    try {
+        const  token = await AsyncStorage.getItem('access_token');
+      
+      const response = await authService.saveSignature(token, signatureImageBase64);
+
+      const resData = response?.data || response;
+
+      if (resData && (resData.status === 'OK' || response.status === 200)) {
+        Alert.alert('Thành công', 'Đã lưu chữ ký cá nhân vào tài khoản!', [
+          { text: 'OK', onPress: () => navigation?.goBack() },
+        ]);
+      } else {
+        Alert.alert('Lỗi', resData?.message || 'Không thể lưu chữ ký lên máy chủ!');
+      }
+    } catch (error) {
+      console.error('Lỗi khi lưu chữ ký:', error);
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi kết nối với máy chủ.');
+    }
+  };
+
+  // 3. Xóa nét vẽ để ký lại
   const handleClear = () => {
     if (signatureRef.current) {
       signatureRef.current.clearSignature();
     }
   };
 
+  // 4. Xóa chữ ký trong danh sách đã lưu
   const handleDeleteSaved = (id) => {
     setSavedSignatures((prev) => prev.filter((item) => item.id !== id));
   };
-
-  
 
   const webStyle = `.m-signature-pad { 
     box-shadow: none; 
@@ -57,7 +85,12 @@ const SignatureScreen = () => {
           showsVerticalScrollIndicator={false}
           data={savedSignatures}
           keyExtractor={(item) => item.id}
-          renderItem={SignatureItem}
+          renderItem={({ item }) => (
+            <SignatureItem 
+              item={item} 
+              onDelete={() => handleDeleteSaved(item.id)} 
+            />
+          )}
           ListHeaderComponent={
             <View>
               <Text className="text-gray-900 text-2xl font-bold text-center mb-1 mt-2">
@@ -67,18 +100,20 @@ const SignatureScreen = () => {
                 Dùng ngón tay để vẽ chữ ký và xuất thành hình ảnh PNG
               </Text>
 
+              {/* Khung vẽ chữ ký */}
               <View className="h-60 bg-slate-50 rounded-3xl border-2 border-dashed border-teal-200 overflow-hidden shadow-sm my-2 relative">
                 <SignatureCanvas
                   ref={signatureRef}
                   onOK={handleOK}
                   webStyle={webStyle}
                   penColor="#0f172a"
-                  minWidth={1}
-                  maxWidth={2}
+                  minWidth={1.5}
+                  maxWidth={3}
                 />
                 <View className="absolute bottom-6 left-8 right-8 h-[1px] bg-slate-300 pointer-events-none" />
               </View>
 
+              {/* Hàng nút bấm hành động */}
               <View className="flex-row gap-3 my-4">
                 <TouchableOpacity
                   onPress={handleClear}
@@ -92,7 +127,7 @@ const SignatureScreen = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={handleSave}
+                  onPress={handleTriggerSave}
                   activeOpacity={0.8}
                   className="flex-1 flex-row items-center justify-center py-3.5 px-4 rounded-2xl bg-teal-600 shadow-sm"
                 >

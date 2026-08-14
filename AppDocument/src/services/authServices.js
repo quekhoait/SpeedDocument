@@ -20,6 +20,16 @@ export const authService = {
 
     refreshToken: async (token) => {
         return await authApis(token).get(endpoints.refresh_token)
+    },
+
+    saveSignature: async (token, signatureData) => {
+        return await authApis(token).post(endpoints.save_signature, {
+        signatureData: signatureData,
+        });
+    },
+
+    updateUser: async(token, data)=> {
+        return await authApis(token).put(endpoints.update, data)
     }
 
    

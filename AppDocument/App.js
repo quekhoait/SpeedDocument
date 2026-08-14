@@ -13,6 +13,8 @@ import VoiceAIScreen from "./src/screens/VoiceScreen";
 import DraftScreen from "./src/screens/DraftScreen";
 import SignatureScreen from "./src/screens/SignatureScreen";
 import { AuthProvider } from "./src/context/AuthContext";
+import PreviewScreen from "./src/screens/PreviewScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,6 +56,16 @@ const TabNavigator = () => {
         name="signature"
         component={SignatureScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="preview"
+        component={PreviewScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen
+        name="profile"
+        component={ProfileScreen} 
+        options={{ headerShown: false }} 
       />
     </Stack.Navigator>
   );
