@@ -1,5 +1,4 @@
-import { Apis, authApis, endpoints } from "../configs/Apis"
-
+import { Apis, authApis, endpoints } from "../configs/Apis";
 
 export const authService = {
     registerWithEmail: async (data) => {
@@ -7,11 +6,11 @@ export const authService = {
     },
 
     sendOtp: async (email) => {
-        return await Apis().post(endpoints.send_otp, {email})
+        return await Apis().post(endpoints.send_otp, { email });
     },
 
     loginWithEmail: async (data) => {
-        return await Apis(data).post(endpoints.email_login, data)
+        return await Apis(data).post(endpoints.email_login, data);
     },
 
     currentUser: async (token) => {
@@ -19,7 +18,7 @@ export const authService = {
     },
 
     refreshToken: async (token) => {
-        return await authApis(token).get(endpoints.refresh_token)
+        return await authApis(token).get(endpoints.refresh_token);
     },
 
     saveSignature: async (token, signatureData) => {
@@ -28,9 +27,15 @@ export const authService = {
         });
     },
 
-    updateUser: async(token, data)=> {
-        return await authApis(token).put(endpoints.update, data)
-    }
+    updateUser: async (token, data) => {
+        return await authApis(token).put(endpoints.update, data, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+        });
+    },
 
-   
-}
+    getDocuments: async (token) => {
+        return await authApis(token).get(endpoints.get_documents)
+    }
+};

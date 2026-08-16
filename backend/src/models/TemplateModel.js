@@ -30,9 +30,8 @@ const Template = sequelize.define('Template', {
 const TemplateField = sequelize.define('TemplateField', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   field_key: { type: DataTypes.STRING(45), allowNull: false },
-  field_label: { type: DataTypes.STRING(100), allowNull: false },
+  field_label: { type: DataTypes.STRING(255), allowNull: false },
   field_type: { type: DataTypes.STRING(45), allowNull: false },
-  field_vector: { type: DataTypes.VECTOR(384), allowNull: true },
   }, {
   tableName: 'template_fields',
   timestamps: false,
@@ -45,7 +44,6 @@ const TemplateFieldMapping = sequelize.define('TemplateFieldMapping', {
   template_fields_id: { type: DataTypes.INTEGER, allowNull: false },
   placeholder: { type: DataTypes.STRING(45), allowNull: false },
   is_required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  prompt_text: { type: DataTypes.STRING(255), allowNull: true },
 }, {
   tableName: 'template_field_mapping',
   timestamps: false,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -30,6 +30,7 @@ const PreviewScreen = ({ route, navigation }) => {
   const handleReload = () => {
     setKey((prev) => prev + 1);
   };
+
 
   return (
     <Base hasHeader={false} activeTab={0} headerTitle="Preview">

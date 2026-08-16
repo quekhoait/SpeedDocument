@@ -13,7 +13,7 @@ const generateDocument = async (data) => {
   fields.forEach((field) => {
     properties[field.placeholder] = {
       type: Type.STRING,
-      description: field.prompt_text || field.field_label,
+      description:  field.field_label,
     };
   });
 
@@ -30,6 +30,7 @@ Nhiệm vụ:
 4. Đánh giá trạng thái 'isComplete':
    - true: khi TẤT CẢ các placeholder đều đã được điền đầy đủ.
    - false: khi vẫn còn ít nhất 1 placeholder có giá trị rỗng "".
+5. Chữ cái bắt đầu cảu mỗi thông tin đều phải viết hoa.
 `;
 
   const userPrompt = `
@@ -41,7 +42,7 @@ Nội dung người dùng nhập mới:
 
 Danh sách các trường cần điền:
 ${fields
-  .map((f) => `- ${f.placeholder}: ${f.prompt_text || f.field_label}`)
+  .map((f) => `- ${f.placeholder}: ${f.field_label}`)
   .join("\n")}
 `;
 

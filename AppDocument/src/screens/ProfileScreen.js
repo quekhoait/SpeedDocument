@@ -1,26 +1,22 @@
 import React, { useContext, useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Image } from "react-native";
-import * as ImagePicker from "react-native-image-picker";
+import * as ImagePicker from "expo-image-picker";
 import Base from "../layout/Base";
 import { AuthContext } from "../context/AuthContext";
 import { authService } from "../services/authServices";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ProfileScreen = () => {
-const { currentUser, setCurrentUser, logout } = useContext(AuthContext);
-
+  const { currentUser, setCurrentUser, logout } = useContext(AuthContext);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [avatarUri, setAvatarUri] = useState(currentUser?.avatar || null);
 
-
-  
   const [formData, setFormData] = useState({
     fullname: currentUser?.fullname || "",
     phone: currentUser?.phone || "",
     gender: currentUser?.gender || "Khác",
     address: currentUser?.address || "",
-    birthday: currentUser?.birthday || "",
   });
 
   const handleChange = (field, value) => {
@@ -29,19 +25,30 @@ const { currentUser, setCurrentUser, logout } = useContext(AuthContext);
 
   const handleChooseAvatar = () => {
     if (!isEditing) return;
-
     Alert.alert("Thay đổi ảnh đại diện", "Chọn nguồn ảnh", [
       {
         text: "Chọn từ thư viện",
-        onPress: () => {
-          ImagePicker.launchImageLibrary(
-            { mediaType: "photo", quality: 0.8, maxWidth: 800, maxHeight: 800 },
-            (response) => {
-              if (response.assets && response.assets.length > 0) {
-                setAvatarUri(response.assets[0].uri);
-              }
+        onPress: async () => {
+          try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+              Alert.alert("Thông báo", "Bạn cần cấp quyền truy cập thư viện ảnh để thực hiện chức năng này!");
+              return;
             }
-          );
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'], 
+              allowsEditing: true, 
+              aspect: [1, 1],       
+              quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+              setAvatarUri(result.assets[0].uri);
+            }
+          } catch (error) {
+            console.error("Lỗi chọn ảnh:", error);
+            Alert.alert("Lỗi", "Không thể mở thư viện ảnh!");
+          }
         },
       },
       { text: "Hủy", style: "cancel" },
@@ -49,48 +56,57 @@ const { currentUser, setCurrentUser, logout } = useContext(AuthContext);
   };
 
   const handleSave = async () => {
-  setLoading(true);
-
-  try {
-    const token = await AsyncStorage.getItem('access_token');
-    if (!token) {
-      setCurrentUser(null);
-      return;
-       }
-       const cleanBirthday = (formData.birthday && formData.birthday !== "Invalid date" && formData.birthday.trim() !== "")
-      ? formData.birthday
-      : null;
-    const updateData = {
-      ...formData,
-      avatar: avatarUri ,
-      birthday: cleanBirthday,
-    };
-
-    const response = await authService.updateUser(token, updateData);
-
-    if (response?.data) {
-      setCurrentUser(response.data);
-    }
-
-    setIsEditing(false); 
-    Alert.alert("Thành công", "Cập nhật thông tin thành công!");
-
-  } catch (err) {
-    console.error("Lỗi cập nhật profile:", err);
-    Alert.alert("Lỗi", err?.response?.data?.message || "Cập nhật thất bại. Vui lòng thử lại!");
-  } finally {
-    setLoading(false); 
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        setCurrentUser(null);
+        return;
+      }
+      const dataToSend = new FormData();
+      dataToSend.append("fullname", formData.fullname || "");
+      dataToSend.append("phone", formData.phone || "");
+      dataToSend.append("gender", formData.gender || "Khác");
+      dataToSend.append("address", formData.address || "");
+     if (avatarUri) {
+      const isNewImageSelected = avatarUri.startsWith("file://")
+      if (isNewImageSelected) {
+      dataToSend.append("avatar", {
+        uri: avatarUri,
+        name: "avatar.jpg",
+        type: "image/jpeg",
+     });
+  } else {
+    dataToSend.append("avatar", avatarUri);
   }
-};
+}
 
-useEffect(() => {
+      const response = await authService.updateUser(token, dataToSend);
+
+      const updatedUserData = response?.data?.data || response?.data?.user || response?.data;
+
+      if (updatedUserData) {
+        setCurrentUser(updatedUserData);
+      }
+
+      setIsEditing(false); 
+      Alert.alert("Thành công", "Cập nhật thông tin thành công!");
+
+    } catch (err) {
+      console.error("Lỗi cập nhật profile:", err);
+      Alert.alert("Lỗi", err?.response?.data?.message || "Cập nhật thất bại. Vui lòng thử lại!");
+    } finally {
+      setLoading(false); 
+    }
+  };
+
+  useEffect(() => {
     if (currentUser) {
       setFormData({
         fullname: currentUser.fullname || "",
         phone: currentUser.phone || "",
         gender: currentUser.gender || "Khác",
         address: currentUser.address || "",
-        birthday: currentUser.birthday || "",
       });
       setAvatarUri(currentUser.avatar || null);
     }
@@ -103,11 +119,11 @@ useEffect(() => {
     ]);
   };
 
-
   return (
     <Base hasHeader={false} headerTitle="Profile" activeTab={2}>
       <ScrollView className="flex-1 bg-gray-50 px-4 py-6" showsVerticalScrollIndicator={false}>
         
+        {/* Header Avatar & Tên */}
         <View className="items-center mb-6">
           <TouchableOpacity
             onPress={handleChooseAvatar}
@@ -137,7 +153,7 @@ useEffect(() => {
           <Text className="text-sm text-gray-500">@{currentUser?.username || "username"}</Text>
         </View>
 
-        {/* Thông tin cố định */}
+        {/* Thông tin tài khoản (Chỉ đọc) */}
         <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
           <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tài khoản</Text>
           <View className="mb-3">
@@ -150,7 +166,7 @@ useEffect(() => {
           </View>
         </View>
 
-        {/* Form thông tin cá nhân */}
+        {/* Thông tin cá nhân (Cho phép sửa) */}
         <View className="bg-white rounded-2xl p-4 mb-6 shadow-sm border border-gray-100">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider">Thông tin cá nhân</Text>
@@ -216,20 +232,6 @@ useEffect(() => {
             )}
           </View>
 
-          {/* Ngày sinh */}
-          <View className="mb-4">
-            <Text className="text-xs text-gray-500 mb-1">Ngày sinh (YYYY-MM-DD)</Text>
-            {isEditing ? (
-              <TextInput
-                className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-800 shadow-inner"
-                value={formData.birthday}
-                onChangeText={(val) => handleChange("birthday", val)}
-                placeholder="2000-01-01"
-              />
-            ) : (
-              <Text className="text-base text-gray-800">{formData.birthday || "Chưa cập nhật"}</Text>
-            )}
-          </View>
 
           {/* Địa chỉ */}
           <View className="mb-2">

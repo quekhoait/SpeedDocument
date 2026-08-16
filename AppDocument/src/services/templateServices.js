@@ -8,5 +8,16 @@ export const templateService = {
 
     getTemplate: async (id) => {
         return await authApis().get(endpoints.get_template(id))
+    },
+
+    search: async (cateId, kw) => {
+        const params = {};
+        if(cateId && cateId !== 'All'){
+            params.cateId = cateId;
+        }
+        if(kw && kw.trim()){
+            params.kw = kw.trim()
+        }
+        return await Apis().get(endpoints.search, { params });
     }
 }

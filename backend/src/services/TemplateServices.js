@@ -11,6 +11,7 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import InspectModule from "docxtemplater/js/inspect-module.js";
 import CloudServices from "./CloudServices.js";
+import { Op } from "sequelize";
 
 const createCategoryTemplate = async (data) => {
   const { name, description } = data;
@@ -20,6 +21,57 @@ const createCategoryTemplate = async (data) => {
     description,
   });
   return newCategory;
+};
+
+const getAllCategory = async () => {
+  return await TemplateCategory.findAll();
+};
+
+// Lấy theo categpry Id và all
+const getTemplates = async (cateId, kw) => {
+  const condition = { is_active: true };
+  if (cateId) {
+    condition.template_category_id = cateId;
+  }
+  if (kw && kw.trim()) {
+    condition.name = {
+      [Op.iLike]: `%${kw.trim()}%`,
+    };
+  }
+  return await Template.findAll({
+    where: condition,
+    include: [
+      {
+        model: TemplateCategory,
+        as: "category",
+        attributes: ["id", "name"],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+};
+
+const getTemplate = async (id) => {
+  return await Template.findByPk(id, {
+    include: [
+      {
+        model: TemplateCategory,
+        as: "category",
+        attributes: ["id", "name"],
+      },
+      {
+        model: TemplateFieldMapping,
+        as: "fieldMappings",
+        attributes: ["placeholder", "is_required"],
+        include: [
+          {
+            model: TemplateField,
+            as: "field",
+          },
+        ],
+      },
+    ],
+  });
 };
 
 const getFieldTemplate = async (fileInput) => {
@@ -43,35 +95,35 @@ const getFieldTemplate = async (fileInput) => {
 };
 
 const previewFieldsFromWord = async (file_path) => {
-    const fieldKeys = await getFieldTemplate(file_path);
+  const fieldKeys = await getFieldTemplate(file_path);
 
-    if (!fieldKeys || fieldKeys.length === 0) {
-        return [];
+  if (!fieldKeys || fieldKeys.length === 0) {
+    return [];
+  }
+  const existingFields = await TemplateField.findAll({
+    where: { field_key: fieldKeys },
+  });
+
+  const existingMap = new Map();
+  existingFields.forEach((f) => existingMap.set(f.field_key, f));
+  return fieldKeys.map((key) => {
+    if (existingMap.has(key)) {
+      const field = existingMap.get(key);
+      return {
+        field_key: key,
+        field_label: field.field_label,
+        field_type: field.field_type,
+        is_existing: true,
+      };
+    } else {
+      return {
+        field_key: key,
+        field_label: key,
+        field_type: "text",
+        is_existing: false,
+      };
     }
-    const existingFields = await TemplateField.findAll({
-        where: { field_key: fieldKeys },
-    });
-
-    const existingMap = new Map();
-    existingFields.forEach(f => existingMap.set(f.field_key, f));
-    return fieldKeys.map(key => {
-        if (existingMap.has(key)) {
-            const field = existingMap.get(key);
-            return {
-                field_key: key,
-                field_label: field.field_label,
-                field_type: field.field_type,
-                is_existing: true, 
-            };
-        } else {
-            return {
-                field_key: key,
-                field_label: key,
-                field_type: 'text',
-                is_existing: false, 
-            };
-        }
-    });
+  });
 };
 
 const getTemplateById = async (id) => {
@@ -92,18 +144,26 @@ const getTemplateById = async (id) => {
   });
 };
 
-
-
 const createTemplate = async (data) => {
-  const { name, description, categoryId, fileBuffer, fields = [] } = data;
+  const {
+    name,
+    description,
+    categoryId,
+    fileBuffer,
+    fileName,
+    fields = [],
+  } = data;
 
-  const cloudResult = await CloudServices.uploadToCloudinary(fileBuffer);
+  const cloudResult = await CloudServices.uploadToCloudinary(
+    fileBuffer,
+    fileName,
+  );
   const file_path = cloudResult.secure_url;
-
   const t = await sequelize.transaction();
 
   try {
-    const vectorData = await generateLocalVector(description);
+   const textToEmbed = `Tên mẫu: ${name}. ${name}. Mục đích sử dụng: ${description}`;
+    const vectorData = await generateLocalVector(textToEmbed);
     const newTemplate = await Template.create(
       {
         name,
@@ -113,12 +173,12 @@ const createTemplate = async (data) => {
         is_active: true,
         template_vector: vectorData,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     if (fields.length > 0) {
       const uniqueFields = Array.from(
-        new Map(fields.map((f) => [f.field_key, f])).values()
+        new Map(fields.map((f) => [f.field_key, f])).values(),
       );
 
       for (const item of uniqueFields) {
@@ -128,17 +188,13 @@ const createTemplate = async (data) => {
         });
 
         if (!fieldObj) {
-          const labelToEmbed = item.field_label || item.field_key;
-          const fieldVector = await generateLocalVector(labelToEmbed);
-
           fieldObj = await TemplateField.create(
             {
               field_key: item.field_key,
-              field_label: labelToEmbed,
+              field_label: item.field_label,
               field_type: item.field_type || "text",
-              field_vector: fieldVector,
             },
-            { transaction: t }
+            { transaction: t },
           );
         }
 
@@ -148,22 +204,21 @@ const createTemplate = async (data) => {
             template_fields_id: fieldObj.id,
             placeholder: `{{${item.field_key}}}`,
             is_required: item.is_required || false,
-            prompt_text: item.prompt_text || `Nhập giá trị cho ${item.field_label}`,
           },
-          { transaction: t }
+          { transaction: t },
         );
       }
     }
 
     await t.commit();
     return await getTemplateById(newTemplate.id);
-
   } catch (error) {
     await t.rollback();
     console.error("Lỗi khi tạo Template:", error);
     throw error;
   }
 };
+
 const updateField = async (data) => {
   const { id, field_key, field_label, field_type } = data;
 
@@ -206,31 +261,32 @@ const updateField = async (data) => {
 };
 
 const getFieldByTemplateId = async (templateId) => {
-    const template = await Template.findByPk(templateId, {
+  const template = await Template.findByPk(templateId, {
+    include: [
+      {
+        model: TemplateFieldMapping,
+        as: "fieldMappings",
         include: [
-            {
-                model: TemplateFieldMapping,
-                as: "fieldMappings",
-                include: [
-                    {
-                        model: TemplateField,
-                        as: "field",
-                    },
-                ],
-            },
+          {
+            model: TemplateField,
+            as: "field",
+          },
         ],
-    });
-    if (!template) return [];
+      },
+    ],
+  });
+  if (!template) return [];
 
-    return template.fieldMappings.map(mapping => ({
-        placeholder: mapping.placeholder,
-        prompt_text: mapping.prompt_text,
-        is_required: mapping.is_required,
+  return template.fieldMappings
+  .filter((m) => !m.placeholder.includes("chu_ky"))
+  .map((mapping) => ({
+    placeholder: mapping.placeholder,
+    is_required: mapping.is_required,
 
-        field_key: mapping.field.field_key,
-        field_label: mapping.field.field_label,
-        field_type: mapping.field.field_type,
-    }));
+    field_key: mapping.field.field_key,
+    field_label: mapping.field.field_label,
+    field_type: mapping.field.field_type,
+  }));
 };
 
 export default {
@@ -240,5 +296,8 @@ export default {
   createTemplate,
   updateField,
   previewFieldsFromWord,
-  getFieldByTemplateId
+  getFieldByTemplateId,
+  getAllCategory,
+  getTemplates,
+  getTemplate,
 };

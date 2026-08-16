@@ -9,8 +9,9 @@ const Document = sequelize.define('Document', {
     extracted_data: { type: DataTypes.JSON, allowNull: true },
     missing_fields: { type: DataTypes.JSON, allowNull: true },
     file_path: { type: DataTypes.STRING(255), allowNull: true },
+    file_pdf: { type: DataTypes.STRING(255), allowNull: true },
     template_id: { type: DataTypes.INTEGER, allowNull: false },
-    user_id: { type: DataTypes.INTEGER, allowNull: true }, //Nhớ sửa lại false
+    user_id: { type: DataTypes.INTEGER, allowNull: true },
     signature: { type: DataTypes.JSON, allowNull: true },
 }, {
     tableName: 'document',

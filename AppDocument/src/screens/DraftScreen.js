@@ -36,7 +36,6 @@ const DraftScreen = ({ navigation }) => {
 const handleProcessAI = async () => {
     let promptToSend = inputText.trim();
 
-    // 1. Kiểm tra đầu vào
     if (!promptToSend && userInputs.length === 0) {
       Alert.alert('Thông báo', 'Vui lòng nhập mô tả hoặc câu trả lời trước khi gửi.');
       return;
@@ -45,7 +44,6 @@ const handleProcessAI = async () => {
     setLoading(true);
 
     try {
-      // 2. Cập nhật câu thoại người dùng trên UI trước khi gửi
       if (promptToSend) {
         setUserInputs((prev) => [...prev, promptToSend]);
         setConversation((prev) => [
@@ -54,28 +52,21 @@ const handleProcessAI = async () => {
         ]);
         setInputText('');
       } else {
-        // Nếu inputText trống nhưng đã từng nhập, lấy câu nhập gần nhất để gửi lại context
         promptToSend = userInputs[userInputs.length - 1] || '';
       }
 
-      // 3. Gọi API
       const response = await documentServices.createDocument({
         documentId: documentId || null,
         prompt: promptToSend, 
       });
 
-      // Bóc tách dữ liệu thực sự từ Axios Response
-      const resData = response?.data || response;
+      const resData = response?.data ;
 
-      console.log("Dữ liệu nhận được:", resData);
 
-      // 4. Xử lý phản hồi từ Server
       if (resData && (resData.status === 'OK' || resData.documentId)) {
-        // Cập nhật documentId & isComplete
         setDocumentId(resData.documentId);
         setIsComplete(resData.isComplete);
         
-        // TRƯỜNG HỢP A: ĐÃ ĐỦ THÔNG TIN
         if (resData.isComplete) {
           Alert.alert('Thành công', 'Đã thu thập đủ thông tin để tạo văn bản!', [
             {

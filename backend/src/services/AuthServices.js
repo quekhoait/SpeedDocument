@@ -3,6 +3,8 @@ import NodeCache from "node-cache";
 import nodemailer from "nodemailer";
 import { User, RefreshToken } from "../models/AuthModel.js";
 import myCache from "../utils/cache.js";
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
 
 const sendOTPEmail = async (email) => {
   const existingUser = await User.findOne({ where: { email } });
@@ -42,7 +44,7 @@ const verifyOTP = (email, inputOtp) => {
 };
 
 const createUser = async (userData) => {
-  const { username, password, email, phone, fullname, gender, address } =
+  const { username, password, email, role } =
     userData;
   const cleanEmail = email.trim().toLowerCase();
   const existingUser = await User.findOne({ where: { username } });
@@ -56,10 +58,7 @@ const createUser = async (userData) => {
     username,
     password: hashedPassword,
     email: cleanEmail,
-    phone,
-    fullname,
-    gender,
-    address,
+    role: 'user'
   });
 
   return { status: "OK", user: newUser };
@@ -113,6 +112,73 @@ const logoutUser = async (userId) => {
   return await RefreshToken.destroy({ where: { userId } });
 };
 
+const saveSignature = async (userId, signature) => {
+  try {
+    if (!signature) {
+      throw new Error("Không tìm thấy dữ liệu chữ ký (Base64)!");
+    }
+    const uploadResponse = await cloudinary.uploader.upload(signature, {
+      folder: "signatures",
+      resource_type: "image",
+      format: "png", 
+    });
+
+    const signatureJson = {
+      type: "image",
+      url: uploadResponse.secure_url,
+      public_id: uploadResponse.public_id,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new Error("Người dùng không tồn tại!");
+    }
+
+    user.signature = signatureJson;
+    await user.save(); 
+
+    return {
+      status: "OK",
+      message: "Lưu chữ ký thành công!",
+      signature: signatureJson,
+    };
+  } catch (error) {
+    console.error("Lỗi Save Signature Service:", error);
+    throw new Error(`Lưu chữ ký thất bại: ${error.message}`);
+  }
+};
+
+const updateUser = async (userId, userData) => {
+    const {
+        phone,
+        gender,
+        fullname,
+        address,
+        avatar 
+    } = userData;
+
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
+    const updateData = {
+        phone,
+        gender,
+        fullname,
+        address,
+    };
+    if (avatar) {
+        updateData.avatar = avatar; 
+    }
+
+    await user.update(updateData);
+
+    return user;
+};
+
 export default {
   createUser,
   loginUser,
@@ -122,4 +188,6 @@ export default {
   logoutUser,
   sendOTPEmail,
   verifyOTP,
+  saveSignature,
+   updateUser
 };

@@ -44,7 +44,8 @@ const Login = () => {
   const handleLoginWithEmail= async()=>{
     const {email, password} = user;
     if(!email || !password){
-      Alert.alert("Vui lòng nhập đầy đủ thông tin")
+      Alert.alert("Vui lòng nhập đầy đủ thông tin");
+      return;
     }
      setLoading(true)
      try{
@@ -53,7 +54,8 @@ const Login = () => {
         password: password
       }
       const response = await authService.loginWithEmail(loginPayload)
-      const { accessToken, refreshToken, user } = response.data;
+      if(response){
+        const { accessToken, refreshToken, user } = response.data;
        
         if (accessToken && refreshToken) {
             await AsyncStorage.setItem('access_token',accessToken);
@@ -62,9 +64,21 @@ const Login = () => {
         Alert.alert('Thành công', 'Đăng nhập thành công!')
         await refreshUser()
         navigation.navigate('home')
-     }catch(error){
-
-     }
+      }else{
+          Alert.alert('Thất bại', response?.data.message)
+      }
+     }catch (error) {
+    console.error("Lỗi đăng nhập:", error);
+    
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      "Đã có lỗi xảy ra, vui lòng thử lại!";
+      
+    Alert.alert("Lỗi", errorMessage);
+  } finally {
+    setLoading(false);
+  }
   }
 
   return (

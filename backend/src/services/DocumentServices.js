@@ -1,24 +1,27 @@
-import { Template } from "../models/TemplateModel.js";
 import axios from "axios";
-import fs from "fs";
-import path from "path";
-import { generateLocalVector } from "../utils/embedding.js";
-import { QueryTypes, Sequelize } from "sequelize";
-import sequelize from "../config.js";
-import TemplateServices from "./TemplateServices.js";
-import AIServices from "./AIServices.js";
-import Document from "../models/DocumentModel.js";
+import util from "util";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
-import CloudServices from "./CloudServices.js";
+import { PDFDocument, rgb } from "pdf-lib";
+import libre from "libreoffice-convert";
+import ImageModule from "docxtemplater-image-module-free";
 
-const getTemplateNoTemplateId = async (prompt) => {
+import sequelize from "../config.js";
+import { Template } from "../models/TemplateModel.js";
+import Document from "../models/DocumentModel.js";
+import { User } from "../models/AuthModel.js";
+import TemplateServices from "./TemplateServices.js";
+import AIServices from "./AIServices.js";
+import CloudServices from "./CloudServices.js";
+import { generateLocalVector } from "../utils/embedding.js";
+import PdfServices from "./PdfServices.js";
+
+
+const getTemplateByPrompt = async (prompt) => {
   const embedding = await generateLocalVector(prompt);
   const vectorString = `[${embedding.join(",")}]`;
   const template = await Template.findOne({
-    where: {
-      is_active: true,
-    },
+    where: { is_active: true },
     order: [
       sequelize.literal(
         `template_vector <=> CAST('${vectorString}' AS vector)`,
@@ -26,77 +29,51 @@ const getTemplateNoTemplateId = async (prompt) => {
     ],
   });
   if (!template) {
-    throw new Error("Không tìm thấy mẫu phù hợp");
+    throw new Error("Không tìm thấy mẫu văn bản phù hợp với yêu cầu.");
   }
+  console.log(template.id)
   return { status: "OK", templateId: template.id };
 };
 
-const fillInformationTemplate = async (templateId, previousData = {}) => {
-  try {
-    const template = await Template.findByPk(templateId);
-    if (!template || !template.file_path) {
-      throw new Error("Không tìm thấy Template hoặc đường dẫn file mẫu!");
-    }
-    let fileBuffer;
-    if (template.file_path) {
-      const response = await axios.get(template.file_path, {
-        responseType: "arraybuffer",
-      });
-      fileBuffer = Buffer.from(response.data);
-    }
-    const zip = new PizZip(fileBuffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-      delimiters: {
-        start: "{{",
-        end: "}}",
-      },
-    });
-    const cleanData = {};
-    Object.keys(previousData).forEach((key) => {
-      const cleanKey = key.replace(/^\{\{|\}\}$/g, "").trim();
-      cleanData[cleanKey] = previousData[key] || "";
-    });
-
-    doc.render(cleanData);
-
-    const filledDocBuffer = doc.getZip().generate({
-      type: "nodebuffer",
-      compression: "DEFLATE",
-    });
-
-    const outputDir = path.join(process.cwd(), "public", "generated_documents");
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    const fileName = `document_${templateId}_${Date.now()}.docx`;
-    const outputPath = path.join(outputDir, fileName);
-
-    fs.writeFileSync(outputPath, filledDocBuffer);
-
-    const cloudResult = await CloudServices.uploadToCloudinary(filledDocBuffer);
-
-    return {
-      status: "OK",
-      filePath: outputPath,
-      fileName: fileName,
-      cloudUrl: cloudResult.secure_url, 
-    };
-  } catch (error) {
-    console.error("Lỗi khi điền thông tin và lưu file Word local:", error);
-    throw new Error(`Xử lý file thất bại: ${error.message}`);
+const fillAndUploadTemplate = async (templateId, extractedData = {}) => {
+  const template = await Template.findByPk(templateId);
+  if (!template || !template.file_path) {
+    throw new Error("Không tìm thấy Template hoặc đường dẫn file mẫu!");
   }
+  const response = await axios.get(template.file_path, {
+    responseType: "arraybuffer",
+  });
+  const zip = new PizZip(Buffer.from(response.data));
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    delimiters: { start: "{{", end: "}}" },
+  });
+  const cleanData = {};
+
+  Object.keys(extractedData).forEach((key) => {
+    const cleanKey = key.replace(/^\{\{|\}\}$/g, "").trim();
+    cleanData[cleanKey] = extractedData[key] || "";
+  });
+  cleanData["chu_ky_nguoi_viet"] = "";
+
+  doc.render(cleanData);
+  const filledDocBuffer = doc.getZip().generate({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+  });
+  const fileName = `doc_${templateId}_${Date.now()}.docx`;
+  const cloudResult = await CloudServices.uploadToCloudinary(
+    filledDocBuffer,
+    fileName,
+  );
+  const cloudUrl = cloudResult.secure_url;
+  return { cloudUrl };
 };
 
-
-
-const createDocumentWithTemplate = async (templateId, prompt) => {
+const createDocumentWithTemplate = async (templateId, prompt, userId = 1) => {
   const template = await Template.findByPk(templateId);
-  if (!template) {
-    throw new Error("Template không tồn tại");
-  }
+  if (!template) throw new Error("Template không tồn tại");
   const fields = await TemplateServices.getFieldByTemplateId(templateId);
   const aiResult = await AIServices.generateDocument({
     prompt,
@@ -104,17 +81,18 @@ const createDocumentWithTemplate = async (templateId, prompt) => {
     previousData: {},
   });
 
-  let fileInfo = null;  if (aiResult.isComplete) {
-    fileInfo = await fillInformationTemplate(templateId, aiResult.data);
+  let fileInfo = null;
+  if (aiResult.isComplete) {
+    fileInfo = await fillAndUploadTemplate(templateId, aiResult.data);
   }
 
   const newDocument = await Document.create({
     template_id: templateId,
-    // user_id: 1,
+    user_id: userId,
     extracted_data: aiResult.data,
     missing_fields: aiResult.missingFields,
     status: aiResult.isComplete ? "1" : "0",
-    file_path: fileInfo ? fileInfo.cloudUrl : null, 
+    file_path: fileInfo?.cloudUrl,
   });
 
   return {
@@ -123,39 +101,37 @@ const createDocumentWithTemplate = async (templateId, prompt) => {
     isComplete: aiResult.isComplete,
     data: aiResult.data,
     missingFields: aiResult.missingFields,
+    fileUrl: fileInfo?.cloudUrl,
     message: aiResult.isComplete
       ? "Đã thu thập đủ thông tin để tạo văn bản!"
       : aiResult.followUpQuestion,
   };
 };
 
-
-
 const updateDocumentProgress = async (documentId, userId, prompt) => {
   const document = await Document.findByPk(documentId);
-  if (!document) {
-    throw new Error("Không tìm thấy bản nháp tài liệu (Document not found)");
-  }
+  if (!document) throw new Error("Không tìm thấy bản nháp tài liệu!");
   const fields = await TemplateServices.getFieldByTemplateId(
     document.template_id,
   );
-  const previousData = document.extracted_data || {};
-
   const aiResult = await AIServices.generateDocument({
     prompt,
     fields,
-    previousData,
+    previousData: document.extracted_data || {},
   });
 
   let fileInfo = null;
   if (aiResult.isComplete) {
-    fileInfo = await fillInformationTemplate(document.template_id, aiResult.data);
+    fileInfo = await fillAndUploadTemplate(document.template_id, aiResult.data);
   }
-
   await document.update({
     extracted_data: aiResult.data,
     missing_fields: aiResult.missingFields,
     status: aiResult.isComplete ? "1" : "0",
+    ...(fileInfo && {
+      file_path: fileInfo.cloudUrl,
+
+    }),
   });
 
   return {
@@ -164,17 +140,190 @@ const updateDocumentProgress = async (documentId, userId, prompt) => {
     isComplete: aiResult.isComplete,
     data: aiResult.data,
     missingFields: aiResult.missingFields,
+    fileUrl: fileInfo?.cloudUrl || null,
     message: aiResult.isComplete
       ? "Đã thu thập đủ thông tin để tạo văn bản!"
       : aiResult.followUpQuestion,
   };
 };
 
+const getDocumentByUserId = async (userId) => {
+  const documents = await Document.findAll({
+    where: {
+      user_id: userId,
+      status: true
+    },
+    order: [["createdAt", "DESC"]],
+  });
+  return documents;
+};
 
+
+
+
+const convertAsync = util.promisify(libre.convert);
+
+const SIGN_MARKER = "[[SIGN]]";
+
+export const writeSignature = async (userId, documentId) => {
+
+  console.log("backend nhận", documentId, userId)
+
+  const docRecord = await Document.findByPk(documentId);
+  if (!docRecord) throw new Error("Không tìm thấy tài liệu!");
+
+  const template = await Template.findByPk(docRecord.template_id);
+  if (!template || !template.file_path) {
+    throw new Error("Không tìm thấy Template hoặc file mẫu!");
+  }
+
+  // 1. Chuẩn bị dữ liệu và gắn chuỗi marker vào chữ ký
+  const templateResponse = await axios.get(template.file_path, {
+    responseType: "arraybuffer",
+  });
+  const zip = new PizZip(Buffer.from(templateResponse.data));
+
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    delimiters: { start: "{{", end: "}}" },
+  });
+
+  const cleanData = {};
+  const extractedData = docRecord.extracted_data;
+  Object.keys(extractedData).forEach((key) => {
+    const cleanKey = key.replace(/^\{\{|\}\}$/g, "").trim();
+    cleanData[cleanKey] = extractedData[key] || " ";
+  });
+
+  cleanData["chu_ky_nguoi_viet"] = SIGN_MARKER;
+  doc.render(cleanData);
+
+  const filledDocxBuffer = doc.getZip().generate({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+  });
+
+  // 2. Chuyển đổi DOCX sang PDF
+  const pdfBuffer = await convertAsync(filledDocxBuffer, ".pdf", undefined);
+
+  // 3. Quét tìm tọa độ tự động từ file PDF vừa tạo
+  const coords = await PdfServices.findTextCoordinates(pdfBuffer, SIGN_MARKER);
+
+  // 4. Mở PDF bằng pdf-lib để xóa marker và đè ảnh chữ ký
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+  const signatureData =
+    typeof docRecord.signature === "string"
+      ? JSON.parse(docRecord.signature)
+      : docRecord.signature;
+
+  if (coords && signatureData && signatureData.url) {
+    const sigResponse = await axios.get(signatureData.url, {
+      responseType: "arraybuffer",
+    });
+    const signatureImage = await pdfDoc.embedPng(sigResponse.data);
+
+    const targetPage = pdfDoc.getPages()[coords.pageIndex];
+
+    targetPage.drawRectangle({
+      x: coords.x - 5,
+      y: coords.y - 5,
+      width: 150,
+      height: 25,
+      color: rgb(1, 1, 1),
+    });
+
+    // Vẽ ảnh chữ ký lên vị trí vừa tìm được
+    targetPage.drawImage(signatureImage, {
+      x: coords.x,
+      y: coords.y - 15,
+      width: 130,
+      height: 55,
+    });
+  }
+
+  // 5. Xuất và lưu trữ PDF
+  const finalPdfBytes = await pdfDoc.save();
+  const finalPdfBuffer = Buffer.from(finalPdfBytes);
+
+  const fileName = `doc_${docRecord.template_id}_signed_${Date.now()}.pdf`;
+  const cloudResult = await CloudServices.uploadToCloudinary(
+    finalPdfBuffer,
+    fileName,
+  );
+
+  const cloudUrl = cloudResult.secure_url;
+  const file_pdf = `https://docs.google.com/gview?url=${encodeURIComponent(cloudUrl)}&embedded=true`;
+
+  await docRecord.update({
+    file_path: cloudUrl,
+    file_pdf: file_pdf,
+    status: 0,
+  });
+
+  return {
+    document: docRecord,
+    cloudUrl,
+    file_pdf,
+  };
+};
+
+const updateSignature = async (userId, documentId, signature) => {
+  try {
+    const user = await User.findByPk(userId)
+       const document = await Document.findByPk(documentId);
+    if (!signature && user.signature === null) {
+      throw new Error("Không tìm thấy dữ liệu chữ ký (Base64)!");
+    }
+    let signatureData = null;
+
+    if(signature){
+    const uploadResponse = await cloudinary.uploader.upload(signature, {
+      folder: "signatures",
+      resource_type: "image",
+      format: "png", 
+    });
+
+    signatureData = {
+      type: "image",
+      url: uploadResponse.secure_url,
+      public_id: uploadResponse.public_id,
+      updatedAt: new Date().toISOString(),
+    };
+
+ 
+    if (!document || document.user_id) {
+      throw new Error("Tài liệu không hợp lệ");
+    }
+    document.signature = signatureData;
+  }else{
+    document.signature = user.signature
+  }
+    await document.save(); 
+
+
+    return {
+      status: "OK",
+      message: "Lưu chữ ký thành công!",
+      signature: signatureData,
+    };
+  } catch (error) {
+    console.error("Lỗi Save Signature Service:", error);
+    throw new Error(`Lưu chữ ký thất bại: ${error.message}`);
+  }
+};
 
 export default {
   createDocumentWithTemplate,
+
   updateDocumentProgress,
-  getTemplateNoTemplateId,
-  fillInformationTemplate,
+
+  getTemplateByPrompt,
+
+  fillAndUploadTemplate,
+
+  getDocumentByUserId,
+  writeSignature,
+  updateSignature
 };

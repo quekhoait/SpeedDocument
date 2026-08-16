@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import {
   Text,
   View,
@@ -8,55 +8,42 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
-  Linking,
 } from "react-native";
 import { Searchbar } from "react-native-paper";
 import Base from "../layout/Base";
 import TemplateItem from "../components/HomeComponents/TemplateItem";
 import { templateService } from "../services/templateServices";
-import TemplatePreviewModal from "./PreviewScreen";
 
-const ALL_CATEGORY = { id: "ALL", name: "Tất cả" };
+const ALL_CATEGORY = { id: "All", name: "Tất cả" };
 
 const HomeScreen = () => {
-
   const navigation = useNavigation();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
   const [categories, setCategories] = useState([ALL_CATEGORY]);
   const [templates, setTemplates] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState("ALL");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("All");
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(5);
 
   const fetchCategories = async () => {
     try {
       const response = await templateService.getAllCategory();
-      const rawCategories = response?.data?.data;
+      const rawCategories = response?.data?.data || [];
       setCategories([ALL_CATEGORY, ...rawCategories]);
     } catch (error) {
       console.error("Lỗi khi lấy danh mục template:", error);
-      Alert.alert(
-        "Lỗi",
-        error?.response?.data?.message || "Không thể tải danh mục văn bản"
-      );
+      Alert.alert("Lỗi", error?.response?.data?.message || "Không thể tải danh mục văn bản");
     }
   };
 
-  const fetchTemplates = async (categoryId) => {
+  const fetchTemplates = async (categoryId, keyword) => {
     try {
       setIsLoading(true);
-      let response;
-      if (categoryId === "ALL") {
-        response = await templateService.getTemplate(); 
-      } else {
-        console.log("id Categpry", categoryId)
-        response = await templateService.getTemplate(categoryId);
-      }
-      
-      const data = response?.data?.data 
+      const response = await templateService.search(categoryId, keyword);
+      const data = response?.data?.data;
       setTemplates(data);
     } catch (error) {
       console.error("Lỗi khi tải mẫu văn bản:", error);
@@ -71,49 +58,32 @@ const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    fetchTemplates(selectedCategoryId);
-  }, [selectedCategoryId]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 1000);
 
-  const handleDetailTemplate = (previewUrl, title = 'Đơn xin nghỉ việc') => {
-  if (!previewUrl) {
-    Alert.alert('Thông báo', 'Mẫu này chưa có đường dẫn xem trước.');
-    return;
-  }
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  navigation.navigate('preview', {
-    previewUrl: previewUrl,
-    title: title,
-  });
-};
+  useEffect(() => {
+    fetchTemplates(selectedCategoryId, debouncedSearchQuery);
+  }, [selectedCategoryId, debouncedSearchQuery]);
 
-  // const filteredTemplates = useMemo(() => {
-  //   if (!searchQuery.trim()) return templates;
+  const handleDetailTemplate = (file_path, title = "Đơn xin nghỉ việc") => {
 
-  //   const query = searchQuery.toLowerCase().trim();
-  //   return templates.filter(
-  //     (item) =>
-  //       item.name?.toLowerCase().includes(query) ||
-  //       item.description?.toLowerCase().includes(query)
-  //   );
-  // }, [searchQuery, templates]);
-
-  // const paginatedTemplates = useMemo(() => {
-  //   return filteredTemplates.slice(0, visibleCount);
-  // }, [filteredTemplates, visibleCount]);
+    if (!file_path) {
+      Alert.alert("Thông báo", "Mẫu này chưa có đường dẫn xem trước.");
+      return;
+    }
+  const previewUrl = `https://docs.google.com/gview?url=${encodeURIComponent(file_path)}&embedded=true`;
+    navigation.navigate("preview", {
+      previewUrl: previewUrl,
+      title: title,
+    });
+  };
 
   const handleSelectCategory = (cateId) => {
     setSelectedCategoryId(cateId);
-    setVisibleCount(5);
-  };
-
-  const handleLoadMore = () => {
-    if (isLoadingMore || visibleCount >= 3) return;
-
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + 5);
-      setIsLoadingMore(false);
-    }, 500);
   };
 
   return (
@@ -129,10 +99,8 @@ const HomeScreen = () => {
         <Searchbar
           placeholder="Tìm kiếm mẫu..."
           value={searchQuery}
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            setVisibleCount(5);
-          }}
+          onChangeText={(text) => setSearchQuery(text)}
+          onClearIconPress={() => setSearchQuery("")}
           style={{
             backgroundColor: "#ffffff",
             borderRadius: 16,
@@ -190,26 +158,14 @@ const HomeScreen = () => {
             }
             renderItem={({ item }) => (
               <TemplateItem
-              onPress={()=>handleDetailTemplate(item.previewUrl)}
+                onPress={() => handleDetailTemplate(item?.file_path, item.name)}
                 name={item.name}
                 description={item.description}
                 category={item.categoryId || item.category?.name}
               />
             )}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.3}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 20 }}
-            ListFooterComponent={() =>
-              isLoadingMore ? (
-                <View className="py-4 items-center">
-                  <ActivityIndicator size="small" color="#2563eb" />
-                  <Text className="text-xs text-gray-500 mt-1">
-                    Đang tải thêm...
-                  </Text>
-                </View>
-              ) : null
-            }
             ListEmptyComponent={() => (
               <View className="items-center justify-center py-12">
                 <Text className="text-gray-500 text-base">

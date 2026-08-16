@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import otpGenerator from "otp-generator";
 import AuthServices from "../services/AuthServices.js";
 import JwtServices from "../services/jwtServices.js";
+import CloudServices from "../services/CloudServices.js";
 
 const sendOTP = async (req, res) => {
   try {
@@ -32,23 +33,15 @@ const createUser = async (req, res) => {
     const {
       username,
       password,
-      confirmPassword,
+      confirm_password,
       email,
-      phone,
-      fullname,
-      gender,
-      address,
-      otp,
+      otp
     } = req.body;
     if (
       !username ||
       !password ||
-      !confirmPassword ||
+      !confirm_password ||
       !email ||
-      !phone ||
-      !fullname ||
-      !gender ||
-      !address ||
       !otp
     ) {
       return res
@@ -56,7 +49,7 @@ const createUser = async (req, res) => {
         .json({ status: "ERR", message: "Missing required fields" });
     }
 
-    if (password !== confirmPassword) {
+    if (password !== confirm_password) {
       return res.status(400).json({
         status: "ERR",
         message: "Mật khẩu và xác nhận mật khẩu không khớp",
@@ -209,6 +202,55 @@ const logoutUser = async (req, res) => {
   }
 };
 
+const saveSignature = async(req, res) => {
+ try {
+      const userId = req.user.id;
+    const { signatureData } = req.body; 
+    console.log(userId, signatureData)
+    if (!userId || !signatureData) {
+      return res.status(400).json({
+        status: "ERR",
+        message: "Thiếu dữ liệu userId hoặc signatureData!",
+      });
+    }
+
+    const result = await AuthServices.saveSignature(userId, signatureData);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({
+      status: "ERR",
+      message: err.message,
+    });
+  }
+}
+
+const updateUser = async (req, res) => {
+  try {
+    const userId = req.user.id; 
+    const userData = req.body;
+    let avatarUrl = null;
+    if (req.file) {
+      const result = await CloudServices.uploadAvatarToCloudinary(
+        req.file.buffer,
+        req.file.originalname
+      );
+      avatarUrl = result.secure_url; 
+    }
+    const updatedUser = await AuthServices.updateUser(userId, {
+      ...userData,
+      avatar: avatarUrl, 
+    });
+
+    return res.status(200).json({
+      message: "Cập nhật thông tin thành công",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Lỗi updateUser:", error);
+    return res.status(500).json({ message: error.message || "Lỗi server" });
+  }
+};
+
 export default {
   createUser,
   loginUser,
@@ -216,4 +258,6 @@ export default {
   refreshToken,
   logoutUser,
   sendOTP,
+  saveSignature,
+  updateUser
 };

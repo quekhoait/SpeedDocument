@@ -11,9 +11,12 @@ export const endpoints = {
     'update': '/auth/update',
 
     'get_all_category': '/templates/get_categories',
-    'get_template': (id) => (id && id !== 'ALL') ? `/templates/category/${id}` : '/templates/category',
+    'search': '/templates/search',
 
-    'create_document': '/documents/create-document'
+    'create_document': '/documents/create-document',
+    'get_documents': '/documents/user-id',
+    'update_document': '/documents/update',
+    'signature': '/documents/signature'
 
 };
 

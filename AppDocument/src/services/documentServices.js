@@ -9,6 +9,24 @@ export const documentServices = {
       documentId,
       templateId,
     });
+  },
+// #nếu có gửi chữ ksy
+  updateSignature: async (token, documentId, signature) => {
+    return await Apis().post(endpoints.update_document, {
+      documentId, signature
+    })
+  },
+//Nếu user có chữ ký và dùng lại
+  updateSignatureUser: async (token, documentId) => {
+    return await Apis().post(endpoints.update_document, {
+      documentId
+    })
+  },
+
+  signature: async (token, documentId) => {
+    return await Apis().post(endpoints.signature, {
+      documentId
+    })
   }
     
 }

@@ -3,7 +3,6 @@ import TemplateService from "../services/TemplateServices.js";
 const createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
-
     if (!name) {
       return res
         .status(400)
@@ -23,6 +22,50 @@ const createCategory = async (req, res) => {
     return res.status(500).json({ status: "ERR", message: err.message });
   }
 };
+
+const getAllCategory = async (req, res) => {
+    try{
+        const data = await TemplateService.getAllCategory();
+        return res.status(200).json({
+          status: "OK",
+          message: "Lấy danh sách loại template thành công",
+          data: data,
+        });
+    }catch(err){
+         console.error("Lỗi:", err);
+        return res.status(500).json({ status: "ERR", message: err.message });
+    }
+}
+
+const getTemplates = async (req, res) => {
+    try{
+      const { cateId, kw } = req.query;
+        const data = await TemplateService.getTemplates(cateId, kw);
+        return res.status(200).json({
+          status: "OK",
+          message: "Lấy template thành công",
+          data: data,
+        });
+    }catch(err){
+         console.error("Lỗi:", err);
+        return res.status(500).json({ status: "ERR", message: err.message });
+    }
+}
+
+const getTemplate = async (req, res) =>{
+  try{
+    const { id } = req.params;
+    const data = await TemplateService.getTemplate(id);
+    return res.status(200).json({
+      status: "OK",
+      message: "Lấy template thành công",
+      data: data,
+    });
+    }catch(err){
+         console.error("Lỗi:", err);
+        return res.status(500).json({ status: "ERR", message: err.message });
+    }
+}
 
 const previewTemplateFields = async (req, res) => {
   try {
@@ -114,9 +157,13 @@ const updateField = async (req, res) => {
   }
 };
 
+
 export default {
   createCategory,
   previewTemplateFields,
   createTemplate,
-  updateField
+  updateField,
+  getTemplates,
+  getTemplate,
+  getAllCategory
 };
