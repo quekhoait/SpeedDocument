@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,62 +21,70 @@ import ButtonComponent from "../components/ButtonComponent";
 import SignatureModal from "../components/SignatureModel";
 import { authService } from "../services/authServices";
 import { AuthContext } from "../context/AuthContext";
-import { documentServices } from "../services/documentServices";
+import {documentServices} from "../services/documentServices";
 
 const CreateDocumentScreen = () => {
   const navigation = useNavigation();
   const { currentUser } = useContext(AuthContext);
-      const token =  AsyncStorage.getItem("access_token");
+  
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchDocuments = async () => {
+  const getToken = async () => {
+    return await AsyncStorage.getItem("access_token");
+  };
+
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
+      const token = await getToken();
+      
+      if (!token) {
+        Alert.alert("Lỗi", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        return;
+      }
 
       const response = await authService.getDocuments(token);
-
-      const docsList = response?.data?.data || response?.data || response || [];
-      setDocuments(Array.isArray(docsList) ? docsList : []);
+      const docsList = response?.data?.data;
+      setDocuments(docsList);
     } catch (error) {
       console.error("Lỗi khi tải văn bản:", error);
       setDocuments([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
+  }, [fetchDocuments]);
 
-  const loadSignature = async(documentId) => {
-    try{
-      console.log("===================", documentId)
-        const response = await documentServices.signature(token, documentId);
-        const resData = response?.data.data;
-        console.log(data)
-        if(resData?.status === "OK"){
-          Alert.alert("Thành công", "Đã điền chữ ký vào tài liệu!");
-        }else{
-           Alert.alert("Thất bại", "Điền thất bại!");
-        }
-    }catch(err){
+  const loadSignature = async (documentId) => {
+    try {
+      const token = await getToken();
+      const response = await documentServices.signature(token, documentId);
+      const resData = response?.data?.data || response?.data;
+      if (resData?.status === "OK") {
+        Alert.alert("Thành công", "Đã điền chữ ký vào tài liệu!");
+      } else {
+        Alert.alert("Thất bại", "Điền thất bại!");
+      }
+    } catch (err) {
+      console.error("Lỗi load signature:", err);
+    }
+  };
 
-    } 
-  }
-
-  const handleMyDocument = async(item) => {
-    const previewUrl = `https://docs.google.com/gview?url=${encodeURIComponent(item?.file_path)}&embedded=true`;
+  const handleMyDocument = async (item) => {
     if (!item?.file_path) {
       Alert.alert("Thông báo", "Văn bản này chưa có đường dẫn xem trước.");
       return;
     }
 
-    await loadSignature(item?.id)
+    const previewUrl = `https://docs.google.com/gview?url=${encodeURIComponent(item.file_path)}&embedded=true`;
+
 
     navigation.navigate("preview", {
       previewUrl: previewUrl,
@@ -85,37 +93,33 @@ const CreateDocumentScreen = () => {
   };
 
   const handleOpenSignature = (item) => {
-  const savedSig = currentUser?.signature;
+    setSelectedDoc(item); 
+    const savedSig = currentUser?.signature;
 
-  if (savedSig) {
-    Alert.alert(
-      "Chọn hình thức ký",
-      `Bạn muốn ký tài liệu "${item.name || item.title || 'này'}" bằng hình thức nào?`,
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
-        },
-        {
-          text: "Vẽ chữ ký mới",
-          onPress: () => {
-            setSelectedDoc(item);
-            setModalVisible(true);
+    if (savedSig) {
+      Alert.alert(
+        "Chọn hình thức ký",
+        `Bạn muốn ký tài liệu "${item.name || item.title || 'này'}" bằng hình thức nào?`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
+            onPress: () => setSelectedDoc(null),
           },
-        },
-        {
-          text: "Dùng chữ ký có sẵn",
-          onPress: () => {
-            handleSaveSignatureAvailble(savedSig, item);
+          {
+            text: "Vẽ chữ ký mới",
+            onPress: () => setModalVisible(true),
           },
-        },
-      ]
-    );
-  } else {
-    setSelectedDoc(item);
-    setModalVisible(true);
-  }
-};
+          {
+            text: "Dùng chữ ký có sẵn",
+            onPress: () => handleSaveSignatureAvailble(item.id),
+          },
+        ]
+      );
+    } else {
+      setModalVisible(true);
+    }
+  };
 
   const handleCloseSignature = () => {
     if (!isSaving) {
@@ -124,23 +128,22 @@ const CreateDocumentScreen = () => {
     }
   };
 
-  // #Dùng chữ ký có sẵn thì ko gửi signature
-  const handleSaveSignatureAvailble = async () => {
+  const handleSaveSignatureAvailble = async (docId) => {
+    const targetDocId = docId;
+    if (!targetDocId) return;
     setIsSaving(true);
     try {
-      const token = await AsyncStorage.getItem("access_token");
-      
+      const token = await getToken();
       const response = await documentServices.updateSignatureUser(
         token,
-        selectedDoc?.id,
+        targetDocId
       );
-
       const resData = response?.data;
-      console.log("================", resData)
+      await loadSignature(targetDocId);
       if (resData && (resData.status === "OK" || response?.status === 200)) {
         Alert.alert("Thành công", "Đã ký tài liệu thành công!");
         handleCloseSignature();
-        fetchDocuments(); 
+        fetchDocuments();
       } else {
         Alert.alert("Lỗi", resData?.message || "Không thể ký tài liệu!");
       }
@@ -153,8 +156,6 @@ const CreateDocumentScreen = () => {
   };
 
 
- 
-
   return (
     <Base headerTitle="AI Document" activeTab={1} hasHeader={true}>
       <ScrollView
@@ -165,7 +166,6 @@ const CreateDocumentScreen = () => {
           paddingBottom: 40,
         }}
       >
-        {/* Lời chào */}
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-1">
             <Text>
@@ -177,7 +177,6 @@ const CreateDocumentScreen = () => {
           </View>
         </View>
 
-        {/* Action nhanh: Soạn thảo & Ra lệnh */}
         <View className="flex-row gap-2 mb-4">
           <TouchableOpacity
             onPress={() => navigation.navigate("draft")}
@@ -210,7 +209,6 @@ const CreateDocumentScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Mục ký tên mẫu */}
         <TouchableOpacity
           onPress={() => navigation.navigate("signature")}
           className="flex-row items-center justify-between bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-sm mb-8"
@@ -247,6 +245,7 @@ const CreateDocumentScreen = () => {
         ) : documents.length > 0 ? (
           <View className="space-y-3">
             {documents.map((item) => (
+              
               <TouchableOpacity
                 key={item.id?.toString()}
                 onPress={() => handleMyDocument(item)}
@@ -268,7 +267,7 @@ const CreateDocumentScreen = () => {
                   </Text>
                 </View>
 
-                {!item.signature && (
+                {!item.signature && item.status && (
                   <View>
                     <ButtonComponent
                       title="Ký tên"
@@ -277,7 +276,16 @@ const CreateDocumentScreen = () => {
                     />
                   </View>
                 )}
-                
+
+                 {!item.signature && !item.status && (
+                  <View>
+                    <ButtonComponent
+                      title="Tiếp tục"
+                      className="px-3 py-1.5 rounded-full text-xs"
+                      onPress={() => navigation.navigate("draft", { documentId: item.id })}
+                    />
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -296,8 +304,8 @@ const CreateDocumentScreen = () => {
       <SignatureModal
         visible={modalVisible}
         onClose={handleCloseSignature}
-        onSave={handleSaveSignatureAvailble}
         isSaving={isSaving}
+        selectedDoc={selectedDoc}
       />
     </Base>
   );

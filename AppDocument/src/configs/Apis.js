@@ -16,8 +16,9 @@ export const endpoints = {
     'create_document': '/documents/create-document',
     'get_documents': '/documents/user-id',
     'update_document': '/documents/update',
-    'signature': '/documents/signature'
+    'signature': '/documents/signature',
 
+    'speed_to_text': '/speed-to-text'
 };
 
 

@@ -49,7 +49,7 @@ const SignatureScreen = ({ navigation }) => {
         if (setCurrentUser && resData.data) {
           setCurrentUser(prev => ({
             ...prev,
-            signature: resData.data.signature || resData.data
+            signature: resData.data.signature 
           }));
         }
 
