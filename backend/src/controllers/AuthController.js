@@ -206,7 +206,6 @@ const saveSignature = async(req, res) => {
  try {
       const userId = req.user.id;
     const { signatureData } = req.body; 
-    console.log(userId, signatureData)
     if (!userId || !signatureData) {
       return res.status(400).json({
         status: "ERR",

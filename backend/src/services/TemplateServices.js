@@ -12,6 +12,7 @@ import Docxtemplater from "docxtemplater";
 import InspectModule from "docxtemplater/js/inspect-module.js";
 import CloudServices from "./CloudServices.js";
 import { Op } from "sequelize";
+import Document from "../models/DocumentModel.js";
 
 const createCategoryTemplate = async (data) => {
   const { name, description } = data;
@@ -152,15 +153,21 @@ const createTemplate = async (data) => {
     fileBuffer,
     fileName,
     fields = [],
+    documentId,
+    urlCloud
   } = data;
+ let file_path = urlCloud;
+  if (!file_path) {
+    if (!fileBuffer) {
+      throw new Error("Thiếu fileBuffer hoặc urlCloud để tạo template.");
+    }
+    const cloudResult = await CloudServices.uploadToCloudinary(fileBuffer, fileName);
+    file_path = cloudResult.secure_url;
+  }
 
-  const cloudResult = await CloudServices.uploadToCloudinary(
-    fileBuffer,
-    fileName,
-  );
-  const file_path = cloudResult.secure_url;
+  // 2. Mở Transaction toàn cục
   const t = await sequelize.transaction();
-
+  
   try {
    const textToEmbed = `Tên mẫu: ${name}. ${name}. Mục đích sử dụng: ${description}`;
     const vectorData = await generateLocalVector(textToEmbed);
@@ -208,6 +215,12 @@ const createTemplate = async (data) => {
           { transaction: t },
         );
       }
+    }
+    if (documentId) {
+      await Document.update(
+        { template_id: newTemplate.id },
+        { where: { id: documentId }, transaction: t }
+      );
     }
 
     await t.commit();
@@ -288,6 +301,9 @@ const getFieldByTemplateId = async (templateId) => {
     field_type: mapping.field.field_type,
   }));
 };
+
+
+
 
 export default {
   createCategoryTemplate,

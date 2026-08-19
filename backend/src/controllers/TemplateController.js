@@ -91,10 +91,10 @@ const previewTemplateFields = async (req, res) => {
 
 const createTemplate = async (req, res) => {
   try {
-    const { name, description, categoryId, fields } = req.body;
+    const { name, description, categoryId, fields, documentId, urlCloud } = req.body;
     const file = req.file;
 
-    if (!name || !categoryId || !file) {
+    if (!name || !categoryId) {
       return res.status(400).json({
         status: "ERR",
         message: "Thiếu thông tin bắt buộc (name, categoryId, file)",
@@ -114,9 +114,11 @@ const createTemplate = async (req, res) => {
       name,
       description,
       categoryId,
-      fileBuffer: file.buffer,
-      fileName: file.originalname,
+ fileBuffer: file?.buffer || null,
+      fileName: file?.originalname || null,
       fields: parsedFields,
+      documentId: documentId,
+      urlCloud: urlCloud
     });
 
     return res.status(201).json({
@@ -156,6 +158,7 @@ const updateField = async (req, res) => {
     return res.status(500).json({ status: "ERR", message: err.message });
   }
 };
+
 
 
 export default {

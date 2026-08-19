@@ -9,6 +9,6 @@ router.post('/create-document', authMiddleWare, DocumentController.processDocume
 router.get('/user-id', authMiddleWare, DocumentController.getDocumentByUserId)
 router.post ('/signature', authMiddleWare, DocumentController.writeSignature)
 router.put('/update', authMiddleWare, DocumentController.updateDocument)
-
-
+router.post('/template', DocumentController.searchTemplateByPrompt)
+router.get("/:id", authMiddleWare, DocumentController.getDocumentById);
 export default router;

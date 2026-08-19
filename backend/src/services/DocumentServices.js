@@ -15,25 +15,68 @@ import AIServices from "./AIServices.js";
 import CloudServices from "./CloudServices.js";
 import { generateLocalVector } from "../utils/embedding.js";
 import PdfServices from "./PdfServices.js";
-
+import { v2 as cloudinary } from "cloudinary";
 
 const getTemplateByPrompt = async (prompt) => {
-  const embedding = await generateLocalVector(prompt);
+  const analysis = await AIServices.analyzeDocumentRequest(prompt);
+  console.log("AI analysis:", analysis);
+
+  if (!analysis?.isDocumentRequest || !analysis?.documentType) {
+    return {
+      status: "NEED_DOCUMENT_TYPE",
+      message: "Tôi chưa xác định được loại văn bản bạn muốn tạo. Vui lòng mô tả rõ hơn.",
+    };
+  }
+
+  const queryToEmbed = analysis.searchText 
+    ? `${analysis.documentType}: ${analysis.searchText}` 
+    : analysis.documentType;
+
+  const embedding = await generateLocalVector(queryToEmbed);
   const vectorString = `[${embedding.join(",")}]`;
+
+  const distanceSql = sequelize.literal(`template_vector <=> CAST(:vectorString AS vector)`);
+
   const template = await Template.findOne({
     where: { is_active: true },
-    order: [
-      sequelize.literal(
-        `template_vector <=> CAST('${vectorString}' AS vector)`,
-      ),
-    ],
+    attributes: {
+      include: [[distanceSql, "distance"]],
+    },
+    replacements: { vectorString },
+    order: [[distanceSql, "ASC"]],
   });
+
   if (!template) {
-    throw new Error("Không tìm thấy mẫu văn bản phù hợp với yêu cầu.");
+    return {
+      status: "TEMPLATE_NOT_FOUND",
+      message: `Không tìm thấy mẫu phù hợp với "${analysis.documentType}".`,
+    };
   }
-  console.log(template.id)
-  return { status: "OK", templateId: template.id };
+
+  const distance = Number(template.get("distance"));
+  const MAX_DISTANCE = 0.35; // Ngưỡng Cosine Distance (Càng nhỏ càng giống)
+
+  if (distance > MAX_DISTANCE) {
+    return {
+      status: "TEMPLATE_NOT_CONFIDENT",
+      message: `Chưa tìm thấy mẫu phù hợp với "${analysis.documentType}".`,
+      documentType: analysis.documentType,
+      distance,
+    };
+  }
+
+  // 6. Thành công
+  return {
+    status: "OK",
+    templateId: template.id,
+    templateTitle: template.title,
+    documentType: analysis.documentType,
+    distance,
+    confidence: analysis.confidence,
+  };
 };
+
+
 
 const fillAndUploadTemplate = async (templateId, extractedData = {}) => {
   const template = await Template.findByPk(templateId);
@@ -91,7 +134,7 @@ const createDocumentWithTemplate = async (templateId, prompt, userId = 1) => {
     user_id: userId,
     extracted_data: aiResult.data,
     missing_fields: aiResult.missingFields,
-    status: aiResult.isComplete ? "1" : "0",
+    status: aiResult.isComplete ? true : false,
     file_path: fileInfo?.cloudUrl,
   });
 
@@ -127,10 +170,9 @@ const updateDocumentProgress = async (documentId, userId, prompt) => {
   await document.update({
     extracted_data: aiResult.data,
     missing_fields: aiResult.missingFields,
-    status: aiResult.isComplete ? "1" : "0",
+    status: aiResult.isComplete ? true : false,
     ...(fileInfo && {
       file_path: fileInfo.cloudUrl,
-
     }),
   });
 
@@ -151,24 +193,17 @@ const getDocumentByUserId = async (userId) => {
   const documents = await Document.findAll({
     where: {
       user_id: userId,
-      status: true
     },
     order: [["createdAt", "DESC"]],
   });
   return documents;
 };
 
-
-
-
 const convertAsync = util.promisify(libre.convert);
 
 const SIGN_MARKER = "[[SIGN]]";
 
 export const writeSignature = async (userId, documentId) => {
-
-  console.log("backend nhận", documentId, userId)
-
   const docRecord = await Document.findByPk(documentId);
   if (!docRecord) throw new Error("Không tìm thấy tài liệu!");
 
@@ -259,7 +294,6 @@ export const writeSignature = async (userId, documentId) => {
   await docRecord.update({
     file_path: cloudUrl,
     file_pdf: file_pdf,
-    status: 0,
   });
 
   return {
@@ -271,37 +305,35 @@ export const writeSignature = async (userId, documentId) => {
 
 const updateSignature = async (userId, documentId, signature) => {
   try {
-    const user = await User.findByPk(userId)
-       const document = await Document.findByPk(documentId);
+    const user = await User.findByPk(userId);
+    const document = await Document.findByPk(documentId);
     if (!signature && user.signature === null) {
       throw new Error("Không tìm thấy dữ liệu chữ ký (Base64)!");
     }
     let signatureData = null;
 
-    if(signature){
-    const uploadResponse = await cloudinary.uploader.upload(signature, {
-      folder: "signatures",
-      resource_type: "image",
-      format: "png", 
-    });
+    if (signature) {
+      const uploadResponse = await cloudinary.uploader.upload(signature, {
+        folder: "signatures",
+        resource_type: "image",
+        format: "png",
+      });
 
-    signatureData = {
-      type: "image",
-      url: uploadResponse.secure_url,
-      public_id: uploadResponse.public_id,
-      updatedAt: new Date().toISOString(),
-    };
+      signatureData = {
+        type: "image",
+        url: uploadResponse.secure_url,
+        public_id: uploadResponse.public_id,
+        updatedAt: new Date().toISOString(),
+      };
 
- 
-    if (!document || document.user_id) {
-      throw new Error("Tài liệu không hợp lệ");
+      if (!document || document.user_id !== userId) {
+        throw new Error("Tài liệu không hợp lệ");
+      }
+      document.signature = signatureData;
+    } else {
+      document.signature = user.signature;
     }
-    document.signature = signatureData;
-  }else{
-    document.signature = user.signature
-  }
-    await document.save(); 
-
+    await document.save();
 
     return {
       status: "OK",
@@ -314,7 +346,34 @@ const updateSignature = async (userId, documentId, signature) => {
   }
 };
 
+const getDocumentById = async (id, userId = null) => {
+  const whereCondition = { id };  
+  if (userId) {
+    whereCondition.user_id = userId;
+  }
+  const document = await Document.findOne({
+    where: whereCondition,
+    include: [
+      {
+        model: Template,
+        as: "template",
+        attributes: ["id", "name", "description", "file_path", "template_category_id"],
+      },
+      {
+        model: User,
+        as: "user",
+        attributes: ["id", "username", "email"],
+      },
+    ],
+  });
+  if (!document) {
+    throw new Error("Văn bản không tồn tại hoặc bạn không có quyền truy cập.");
+  }
+  return document;
+};
+
 export default {
+  getDocumentById,
   createDocumentWithTemplate,
 
   updateDocumentProgress,
@@ -325,5 +384,5 @@ export default {
 
   getDocumentByUserId,
   writeSignature,
-  updateSignature
+  updateSignature,
 };

@@ -2,17 +2,47 @@ import multer from 'multer';
 
 const storage = multer.memoryStorage();
 
+// =========================
+// Upload Audio (Speech-to-text / Audio Processing)
+// =========================
+const audioUpload = multer({
+    storage,
+    limits: {
+        fileSize: 25 * 1024 * 1024 // 25MB
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+            'audio/mpeg',       // .mp3
+            'audio/mp3',
+            'audio/wav',        // .wav
+            'audio/x-wav',
+            'audio/wave',
+            'audio/m4a',        // .m4a
+            'audio/x-m4a',
+            'audio/mp4',
+            'audio/aac',        // .aac
+            'audio/ogg',        // .ogg
+            'audio/webm'        // .webm
+        ];
+
+        // Hoặc kiểm tra nhanh mimeType bắt đầu bằng 'audio/'
+        if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+            return;
+        }
+
+        cb(new Error('Chỉ hỗ trợ file âm thanh (MP3, WAV, M4A, AAC, OGG, WEBM)'));
+    }
+});
 
 // =========================
-// Upload document
+// Upload Document
 // =========================
 const documentUpload = multer({
     storage,
-
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB
     },
-
     fileFilter: (req, file, cb) => {
         const allowedTypes = [
             'application/pdf',
@@ -29,8 +59,9 @@ const documentUpload = multer({
     }
 });
 
-
-
+// =========================
+// Upload Avatar
+// =========================
 const avatarUpload = multer({
     storage,
     limits: {
@@ -53,19 +84,15 @@ const avatarUpload = multer({
     }
 });
 
-
-const uploadSingle = (fieldName = 'path') => {
-    return documentUpload.single(fieldName);
-};
-
-const uploadAvatar = (fieldName = 'avatar') => {
-    return avatarUpload.single(fieldName);
-};
-
+// Helper functions gắn vào route
+const uploadSingle = (fieldName = 'path') => documentUpload.single(fieldName);
+const uploadAvatar = (fieldName = 'avatar') => avatarUpload.single(fieldName);
+const uploadAudio = (fieldName = 'file') => audioUpload.single(fieldName);
 
 export {
     uploadSingle,
-    uploadAvatar
+    uploadAvatar,
+    uploadAudio
 };
 
 export default uploadSingle;
