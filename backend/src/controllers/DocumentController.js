@@ -5,7 +5,7 @@ import WordServices from "../services/WordServices.js";
 
 export const processDocumentChat = async (req, res) => {
   try {
-    const { documentId, templateId, prompt } = req.body;
+    const { documentId, templateId, prompt, type } = req.body;
     const userId = req.user?.id;
 
     // TRƯỜNG HỢP 1: ĐANG TIẾP TỤC TRONG 1 SESSION ĐÃ CÓ DOCUMENT
@@ -218,10 +218,37 @@ const getDocumentById = async (req, res) => {
   }
 };
 
+
+const getAllDocument = async (req, res) => {
+  try {
+    const documents = await DocumentServices.getAllDocument(req.query);
+
+    if (!documents || documents.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'Danh sách tài liệu trống',
+        data: [],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: documents,
+    });
+  } catch (error) {
+    console.error('Lỗi lấy tài liệu:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi server nội bộ',
+    });
+  }
+};
+
 export default {getDocumentById,
   processDocumentChat,
   getDocumentByUserId,
   writeSignature,
   updateDocument,
-  searchTemplateByPrompt
+  searchTemplateByPrompt,
+   getAllDocument
 };

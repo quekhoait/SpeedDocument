@@ -12,9 +12,11 @@ export const endpoints = {
 
     'get_all_category': '/templates/get_categories',
     'search': '/templates/search',
+    'create_template':'/templates/create-template',
 
     'create_document': '/documents/create-document',
     'get_documents': '/documents/user-id',
+    'get_document_by_id': (id) => `/documents/${id}`,
     'update_document': '/documents/update',
     'signature': '/documents/signature',
 

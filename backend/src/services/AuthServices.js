@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import NodeCache from "node-cache";
 import nodemailer from "nodemailer";
-import { User, RefreshToken } from "../models/AuthModel.js";
+import { User, RefreshToken, AuthMethod } from "../models/AuthModel.js";
 import myCache from "../utils/cache.js";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
@@ -44,8 +44,7 @@ const verifyOTP = (email, inputOtp) => {
 };
 
 const createUser = async (userData) => {
-  const { username, password, email, role } =
-    userData;
+  const { username, password, email } = userData;
   const cleanEmail = email.trim().toLowerCase();
   const existingUser = await User.findOne({ where: { username } });
   if (existingUser) {
@@ -61,6 +60,11 @@ const createUser = async (userData) => {
     role: 'user'
   });
 
+  await AuthMethod.create({
+    user_id: newUser.id,
+    provider: 'local',
+    providerId: cleanEmail
+  })
   return { status: "OK", user: newUser };
 };
 
@@ -99,7 +103,7 @@ const getUserById = async (userId) => {
 
 const saveRefreshToken = async (userId, token) => {
   return await RefreshToken.create({
-    userId: userId,
+    user_id: userId,
     refreshToken: token,
   });
 };
@@ -179,6 +183,17 @@ const updateUser = async (userId, userData) => {
     return user;
 };
 
+const getAllUser = async(userId)=> {
+ const currentUser = await User.findByPk(userId);
+  if (!currentUser || currentUser.role !== 'admin') {
+    return { status: 'ERROR', message: 'Bạn không có quyền truy cập!' };
+  }
+  const allUsers = await User.findAll({
+    attributes: { exclude: ['password'] } 
+  });
+  return { status: 'OK', data: allUsers };
+};
+
 export default {
   createUser,
   loginUser,
@@ -189,5 +204,6 @@ export default {
   sendOTPEmail,
   verifyOTP,
   saveSignature,
-   updateUser
+   updateUser,
+   getAllUser
 };

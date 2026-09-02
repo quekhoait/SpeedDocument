@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config.js';
 import pgvector from 'pgvector/sequelize';
+import { User } from './AuthModel.js';
 
 pgvector.registerTypes(sequelize);
 
@@ -15,6 +16,7 @@ const TemplateCategory = sequelize.define('TemplateCategory', {
 
 const Template = sequelize.define('Template', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  user_id: {type: DataTypes.INTEGER, allowNull: true},
   name: { type: DataTypes.STRING(150), allowNull: false },
   file_path: { type: DataTypes.STRING(255), allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
@@ -43,7 +45,6 @@ const TemplateFieldMapping = sequelize.define('TemplateFieldMapping', {
   template_id: { type: DataTypes.INTEGER, allowNull: false },
   template_fields_id: { type: DataTypes.INTEGER, allowNull: false },
   placeholder: { type: DataTypes.STRING(45), allowNull: false },
-  is_required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 }, {
   tableName: 'template_field_mapping',
   timestamps: false,
@@ -56,6 +57,15 @@ Template.belongsTo(TemplateCategory, {
 });
 TemplateCategory.hasMany(Template, {
   foreignKey: 'template_category_id',
+  as: 'templates',
+});
+
+Template.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+User.hasMany(Template, {
+  foreignKey: 'user_id',
   as: 'templates',
 });
 

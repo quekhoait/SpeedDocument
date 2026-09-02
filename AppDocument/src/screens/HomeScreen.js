@@ -69,7 +69,7 @@ const HomeScreen = () => {
     fetchTemplates(selectedCategoryId, debouncedSearchQuery);
   }, [selectedCategoryId, debouncedSearchQuery]);
 
-  const handleDetailTemplate = (file_path, title = "Đơn xin nghỉ việc") => {
+  const handleDetailTemplate = (file_path, title) => {
 
     if (!file_path) {
       Alert.alert("Thông báo", "Mẫu này chưa có đường dẫn xem trước.");
@@ -82,12 +82,18 @@ const HomeScreen = () => {
     });
   };
 
+  const handleItem = (item)=> {
+      navigation.navigate("draft", {
+        template: item
+    });
+  }
+
   const handleSelectCategory = (cateId) => {
     setSelectedCategoryId(cateId);
   };
 
   return (
-    <Base headerTitle="AI Document" activeTab={0} hasHeader={true}>
+    <Base headerTitle="AI Document" activeTab={0} hasHeader={true} hasNav={true}>
       <View className="flex-1 bg-orange-100 p-4">
         <Text className="text-2xl font-bold text-slate-800">
           Thư viện Mẫu Văn Bản
@@ -117,7 +123,7 @@ const HomeScreen = () => {
             contentContainerStyle={{ alignItems: "center" }}
           >
             {categories.map((category) => {
-              const categoryKey = category.id || category._id;
+              const categoryKey = category.id;
               const isActive = selectedCategoryId === categoryKey;
 
               return (
@@ -158,6 +164,7 @@ const HomeScreen = () => {
             }
             renderItem={({ item }) => (
               <TemplateItem
+              onHandle={()=> handleItem(item)}
                 onPress={() => handleDetailTemplate(item?.file_path, item.name)}
                 name={item.name}
                 description={item.description}

@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { UserRole } from '../models/AuthModel.js';
 
 dotenv.config();
 
 
-const authMiddleWare = (req, res, next) => {
+const verifyToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) {
     return res.status(401).json({
@@ -26,5 +27,21 @@ const authMiddleWare = (req, res, next) => {
 }
 
 
+const authAdminMiddleWare = (req, res, next)=> {
+  console.log(req.user?.role)
+  if(req.user?.role !== UserRole.ADMIN){
+    return res.status(403).json({
+      status: "ERR",
+      message: "Truy cập của bạn bị từ chối"
+    })
+  }
+  next();  
+}
 
-export default authMiddleWare;
+
+const authMiddleware = {
+  verifyToken,
+  authAdminMiddleWare,
+};
+
+export default authMiddleware;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Layout,
   Menu,
@@ -33,29 +33,63 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import DocumentPage from './DocumentPage';
-import UserPage from './UserPage';
 import TemplatePage from './TemplatePage';
+import { services } from '../services';
 
 const { Header, Sider, Content } = Layout;
 
 export default function AdminDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState('dashboard');
+  const [currentUser, setCurrentUser] = useState();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     message.success('Đã đăng xuất');
     navigate('/admin/login');
   };
 
+  const getUser = async (token) => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    try {
+      const res = await services.getUser(token);
+      if (res.data?.status === "OK" || res.status === 200) {
+        setCurrentUser(res.data?.user || res.data);
+      }
+    } catch (error) {
+      if (error.response?.status === 401 && refreshToken) {
+        try {
+          const refreshRes = await services.refreshToken(refreshToken);
+          if (refreshRes.data?.status === "OK" || refreshRes.status === 200) {
+            const newAccessToken = refreshRes.data?.accessToken;
+            localStorage.setItem('access_token', newAccessToken);
+            await getUser(newAccessToken);
+          } 
+        } catch (refreshError) {
+          console.error('Refresh token failed:', refreshError);
+        }
+      } else {
+        console.log(error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      getUser(token);
+    } else {
+      handleLogout();
+    }
+  }, []);
+
+
+
+
   const userMenuItems = [
-    {
-      key: 'profile',
-      label: 'Thông tin cá nhân',
-      icon: <UserOutlined />,
-    },
     {
       key: 'settings',
       label: 'Cài đặt',
@@ -80,16 +114,6 @@ export default function AdminDashboard() {
       label: 'Dashboard',
     },
     {
-      key: 'documents',
-      icon: <FileTextOutlined />,
-      label: 'Quản lý Tài liệu',
-    },
-    {
-      key: 'users',
-      icon: <TeamOutlined />,
-      label: 'Quản lý Người dùng',
-    },
-    {
       key: 'templates',
       icon: <FileOutlined />,
       label: 'Quản lý Mẫu',
@@ -106,8 +130,6 @@ export default function AdminDashboard() {
 
   const dashboardStats = [
     { label: 'Tổng Tài liệu', value: 1234, icon: <FileTextOutlined /> },
-    { label: 'Người dùng', value: 567, icon: <TeamOutlined /> },
-    { label: 'Tổng lượt xem', value: 98765, icon: '👁️' },
     { label: 'Mẫu', value: 89, icon: <FileOutlined /> },
   ];
 
@@ -199,7 +221,6 @@ export default function AdminDashboard() {
               ))}
             </Row>
 
-            {/* Recent Documents */}
             <Card
               title={<span className="text-lg font-semibold text-gray-900">Tài liệu gần đây</span>}
               className="!rounded-xl !shadow-sm !border-gray-200"
@@ -219,9 +240,6 @@ export default function AdminDashboard() {
 
       case 'documents':
         return <DocumentPage />;
-
-      case 'users':
-        return <UserPage />;
 
       case 'templates':
         return <TemplatePage />;
@@ -279,14 +297,11 @@ export default function AdminDashboard() {
           />
 
           <Space size="large" className="mr-6">
-            <Tooltip title="Thông báo">
-              <Button type="text" icon={<BellOutlined style={{ fontSize: '18px' }} />} />
-            </Tooltip>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Button type="text" className="hover:!bg-gray-100">
                 <Space size="small">
                   <Avatar icon={<UserOutlined />} className="!bg-blue-600" />
-                  <span className="text-gray-700 font-medium">Admin</span>
+                  <span className="text-gray-700 font-medium">{currentUser?.fullname}</span>
                 </Space>
               </Button>
             </Dropdown>

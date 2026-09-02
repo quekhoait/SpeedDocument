@@ -372,6 +372,10 @@ const getDocumentById = async (id, userId = null) => {
   return document;
 };
 
+const getAllDocument = async ()=> {
+    return await Document.findAll();
+}
+
 export default {
   getDocumentById,
   createDocumentWithTemplate,
@@ -385,4 +389,5 @@ export default {
   getDocumentByUserId,
   writeSignature,
   updateSignature,
+  getAllDocument
 };

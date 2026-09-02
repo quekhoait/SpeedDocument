@@ -2,7 +2,7 @@ import React from "react";
 import { Text, View, TouchableOpacity } from "react-native";
 import { FileText, ShieldCheck, ArrowRight } from "lucide-react-native";
 
-const TemplateItem = ({name, description, category, onPress}) => {
+const TemplateItem = ({name, description, category, onPress, onHandle}) => {
   return (
     <View className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm w-full my-2">
       <View className="flex-row justify-between items-center mb-3">
@@ -12,9 +12,12 @@ const TemplateItem = ({name, description, category, onPress}) => {
       </View>
 
       {/* Content */}
-      <Text className="text-xl font-bold text-slate-800 mb-1.5">
+      <TouchableOpacity onPress={onHandle}>
+ <Text className="text-xl font-bold text-slate-800 mb-1.5">
         {name}
       </Text>
+      </TouchableOpacity>
+     
       <Text className="text-sm text-gray-500 leading-5 mb-4">
         {description}
       </Text>

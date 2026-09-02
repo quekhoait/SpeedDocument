@@ -28,6 +28,10 @@ export const documentServices = {
     });
   },
 
+ getDocumentById: async (token, documentId) => {
+  return await authApis(token).get(endpoints.get_document_by_id(documentId));
+},
+
   speedToText: async (audioUri) => {
     const formData = new FormData();  
   formData.append('file', {

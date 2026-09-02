@@ -14,7 +14,6 @@ const sendOTP = async (req, res) => {
       });
     }
     await AuthServices.sendOTPEmail(email);
-
     return res.status(200).json({
       status: "OK",
       message: "Mã OTP đã được gửi thành công!",
@@ -82,7 +81,6 @@ const createUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return res.status(400).json({
         status: "ERR",
@@ -98,7 +96,7 @@ const loginUser = async (req, res) => {
 
     const userData = {
       id: userLogin.user.id,
-      isAdmin: userLogin.user.isAdmin || false,
+      role: userLogin.user.role,
     };
 
     const accessToken = JwtServices.genneralAccessToken(userData);
@@ -169,7 +167,7 @@ const refreshToken = async (req, res) => {
 
       const accessToken = JwtServices.genneralAccessToken({
         id: decoded.id,
-        isAdmin: decoded.isAdmin || false,
+        role: decoded.role
       });
 
       return res.status(200).json({
@@ -250,6 +248,28 @@ const updateUser = async (req, res) => {
   }
 };
 
+const getAllUser = async(req, res)=> {
+  try{
+     const userId = req.user.id;
+      const user = await AuthServices.getAllUser(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        status: "ERR",
+        message: "User not found",
+      });
+    }
+    return res.status(200).json({
+      status: "OK",
+      message: "User found",
+      user: user.user,
+    });
+  }catch (error) {
+    console.error("Lỗi updateUser:", error);
+    return res.status(500).json({ message: error.message || "Lỗi server" });
+  }
+}
+
 export default {
   createUser,
   loginUser,
@@ -258,5 +278,6 @@ export default {
   logoutUser,
   sendOTP,
   saveSignature,
-  updateUser
+  updateUser,
+  getAllUser
 };

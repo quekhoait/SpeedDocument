@@ -1,43 +1,53 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Spin } from 'antd';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 
-
-// Protected Route Component
 function ProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
-
-  useEffect(() => {
-    // Kiểm tra token từ localStorage
-    const token = localStorage.getItem('authToken');
-    setIsAuthenticated(!!token);
-  }, []);
-
-  if (isAuthenticated === null) {
-    return <Spin fullscreen tip="Đang tải..." />;
+  const token = localStorage.getItem('access_token');
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (!token) {
+    return <Navigate to="/admin/login" replace />;
   }
+  if (user.role !== 'admin') {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+}
 
-  return isAuthenticated ? children : <Navigate to="/admin/login" replace />;
+function PublicRoute({ children }) {
+  const token = localStorage.getItem('access_token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  return token && user.role === 'admin' ? (
+    <Navigate to="/admin/dashboard" replace />
+  ) : (
+    children
+  );
 }
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/admin/login" element={<Login />} />
+      <Route
+        path="/admin/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
 
       <Route
         path="/admin/dashboard"
         element={
-        //   <ProtectedRoute>
+          <ProtectedRoute>
             <AdminDashboard />
-        //   </ProtectedRoute>
+          </ProtectedRoute>
         }
       />
 
-      {/* Default redirects */}
-      <Route path="/" element={<Navigate to="/admin/login" replace />} />
+      <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/admin/login" replace />} />
     </Routes>
   );

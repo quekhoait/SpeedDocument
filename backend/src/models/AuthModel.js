@@ -34,7 +34,7 @@ const User = sequelize.define('User', {
 
 const AuthMethod = sequelize.define('AuthMethod', {
     id: {type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false, references: {
+    user_id: { type: DataTypes.INTEGER, allowNull: false, references: {
             model: 'users',
             key: 'id'
         },
@@ -42,8 +42,6 @@ const AuthMethod = sequelize.define('AuthMethod', {
     },
     provider: {type: DataTypes.STRING(50), allowNull: false },
     providerId: { type: DataTypes.STRING(255), allowNull: false },
-    refreshjwt: { type: DataTypes.TEXT, allowNull: false },
-    expiresAt: { type: DataTypes.DATE, allowNull: false, defaultValue: () => new Date(Date.now() + 3600 * 1000) }
 }, {
     tableName: 'auth_methods',
     timestamps: true
@@ -51,7 +49,7 @@ const AuthMethod = sequelize.define('AuthMethod', {
 
 const RefreshToken = sequelize.define('RefreshToken', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false, references: {
+    user_id: { type: DataTypes.INTEGER, allowNull: false, references: {
             model: 'users',
             key: 'id'
         },

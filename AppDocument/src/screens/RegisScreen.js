@@ -58,7 +58,7 @@ const Register = () => {
       setOtpSend(true)
       Alert.alert('Thành công', 'Mã OTP đã được gửi đến email của bạn')
     } catch (error) {
-      console.log(error?.response?.data)
+      console.log(error?.response)
       Alert.alert(
         'Thất bại',
         error?.response?.data?.message || 'Không thể gửi mã OTP. Vui lòng thử lại.'

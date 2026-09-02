@@ -1,12 +1,38 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Row, Col, Space, message, Divider } from 'antd';
+import { Form, Input, Button, Checkbox, Card, Row, Col, Space, message, Divider, Alert } from 'antd';
 import { UserOutlined, LockOutlined, GoogleOutlined, GithubOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { services } from '../services';
 
 export default function Login() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+ const handleLogin = async (values) => {
+  console.log(1)
+  setLoading(true);
+  try {
+    const { email, password } = values;
+    console.log(values)
+    const res = await services.login(email, password);
+    console.log(res)
+    if(res.data.status==="OK"){
+      localStorage.setItem('access_token', res.data.accessToken);
+      localStorage.setItem("refresh_token", res.data.refreshToken)
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      alert("Thành công", res.data.message)
+      navigate("/admin/dashboard");
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    const errorMsg =
+      error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+    message.error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
  
   return (
@@ -32,7 +58,7 @@ export default function Login() {
             <div className="text-center mb-8">
               <div className="mb-4 text-6xl animate-bounce">📄</div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                SpeedDoc Admin
+                SpeedDocument Admin
               </h1>
               <p className="text-gray-500 text-sm mt-2">Quản lý tài liệu chuyên nghiệp</p>
             </div>
@@ -41,8 +67,7 @@ export default function Login() {
             <Form
               form={form}
               layout="vertical"
-            //   onFinish={onFinish}
-            //   onFinishFailed={onFinishFailed}
+              onFinish={handleLogin}
               autoComplete="off"
               className="w-full"
             >
@@ -78,9 +103,7 @@ export default function Login() {
                 />
               </Form.Item>
 
-              <Form.Item name="remember" valuePropName="checked" initialValue={false}>
-                <Checkbox className="text-gray-600">Nhớ mật khẩu</Checkbox>
-              </Form.Item>
+
 
               <Form.Item>
                 <Button
@@ -94,59 +117,12 @@ export default function Login() {
                   Đăng nhập
                 </Button>
               </Form.Item>
-
-              {/* Forgot Password Link */}
-              <div className="text-right">
-                <a href="#" className="text-blue-600 hover:text-purple-600 text-sm font-medium transition">
-                  Quên mật khẩu?
-                </a>
-              </div>
             </Form>
 
-            {/* Divider */}
-            <Divider className="my-5">Hoặc tiếp tục với</Divider>
-
-            {/* Social Login */}
-            <Space size="middle" className="w-full justify-center">
-              <Button
-                icon={<GoogleOutlined />}
-                size="large"
-                className="!w-12 !h-12 !rounded-lg !border-gray-300 hover:!border-blue-600 hover:!text-blue-600 hover:!shadow-lg transition"
-                title="Đăng nhập với Google"
-              />
-              <Button
-                icon={<GithubOutlined />}
-                size="large"
-                className="!w-12 !h-12 !rounded-lg !border-gray-300 hover:!border-gray-800 hover:!text-gray-800 hover:!shadow-lg transition"
-                title="Đăng nhập với GitHub"
-              />
-            </Space>
-
-            {/* Sign Up Link */}
-            <div className="text-center mt-6">
-              <p className="text-gray-600 text-sm">
-                Chưa có tài khoản?{' '}
-                <a href="#" className="text-blue-600 hover:text-purple-600 font-semibold transition">
-                  Đăng ký ngay
-                </a>
-              </p>
-            </div>
+           
           </Card>
 
-          {/* Footer Info */}
-          <div className="text-center mt-8 text-xs text-white/80">
-            <Space size="small" split="|">
-              <a href="#" className="hover:text-white transition">
-                Điều khoản sử dụng
-              </a>
-              <a href="#" className="hover:text-white transition">
-                Chính sách bảo mật
-              </a>
-              <a href="#" className="hover:text-white transition">
-                Liên hệ hỗ trợ
-              </a>
-            </Space>
-          </div>
+      
         </Col>
       </Row>
     </div>

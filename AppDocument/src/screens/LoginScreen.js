@@ -54,8 +54,9 @@ const Login = () => {
         password: password
       }
       const response = await authService.loginWithEmail(loginPayload)
+      console.log(response)
       if(response){
-        const { accessToken, refreshToken, user } = response.data;
+        const { accessToken, refreshToken } = response.data;
        
         if (accessToken && refreshToken) {
             await AsyncStorage.setItem('access_token',accessToken);

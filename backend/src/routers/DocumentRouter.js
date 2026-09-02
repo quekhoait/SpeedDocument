@@ -5,10 +5,13 @@ import authMiddleWare from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/create-document', authMiddleWare, DocumentController.processDocumentChat);
-router.get('/user-id', authMiddleWare, DocumentController.getDocumentByUserId)
-router.post ('/signature', authMiddleWare, DocumentController.writeSignature)
-router.put('/update', authMiddleWare, DocumentController.updateDocument)
+router.post('/create-document', authMiddleWare.verifyToken, DocumentController.processDocumentChat);
+router.get('/user-id', authMiddleWare.verifyToken, DocumentController.getDocumentByUserId)
+router.post ('/signature', authMiddleWare.verifyToken, DocumentController.writeSignature)
+router.put('/update', authMiddleWare.verifyToken, DocumentController.updateDocument)
 router.post('/template', DocumentController.searchTemplateByPrompt)
-router.get("/:id", authMiddleWare, DocumentController.getDocumentById);
+router.get("/get-all", DocumentController.getAllDocument)
+router.get("/:id", authMiddleWare.verifyToken, DocumentController.getDocumentById);
+
+
 export default router;

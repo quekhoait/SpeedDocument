@@ -47,6 +47,11 @@ export default function TemplatePage() {
   const [fileList, setFileList] = useState([]);
   const [extracting, setExtracting] = useState(false);
 
+  // States hỗ trợ thêm nhanh Danh mục
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+  const [createCatLoading, setCreateCatLoading] = useState(false);
+
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -82,6 +87,37 @@ export default function TemplatePage() {
     }
   };
 
+  const handleCreateCategory = async (e) => {
+    const token = localStorage.getItem("access_token")
+    e.preventDefault();
+    if (!newCatName.trim()) {
+      message.warning('Vui lòng nhập tên danh mục');
+      return;
+    }
+    setCreateCatLoading(true);
+    try {
+      const res = await services.createCategory(token, {
+  name: newCatName.trim(),
+  description: newCatDesc.trim(),
+});
+      const newCategory = res?.data?.data;
+
+      message.success('Thêm danh mục mới thành công');
+      setCategories((prev) => [...prev, newCategory]);
+      
+      // Gán category vừa tạo vào form hiện tại
+      form.setFieldsValue({ categoryId: newCategory.id });
+
+      setNewCatName('');
+      setNewCatDesc('');
+    } catch (error) {
+      console.error('Lỗi tạo danh mục:', error);
+      message.error(error?.response?.data?.message || 'Không thể tạo danh mục mới');
+    } finally {
+      setCreateCatLoading(false);
+    }
+  };
+
   const handleFileUpload = async (info) => {
     setFileList(info.fileList);
     const rawFile = info.file.originFileObj || info.file;
@@ -105,7 +141,6 @@ export default function TemplatePage() {
     }
   };
 
-  // --- HÀM XỬ LÝ CHỈNH SỬA TRỰC TIẾP TRÊN BẢNG FIELDS ---
   const handleFieldChange = (index, key, value) => {
     const updatedFields = [...extractedFields];
     updatedFields[index] = {
@@ -127,42 +162,42 @@ export default function TemplatePage() {
     ]);
   };
 
- const handleEditRecord = async (record) => {
-  setEditingRecord(record);
-  setModalVisible(true);
-  setExtracting(true);
+  const handleEditRecord = async (record) => {
+    setEditingRecord(record);
+    setModalVisible(true);
+    setExtracting(true);
 
-  try {
-    const res = await services.getTemplate(record.id);
-    const templateDetail = res?.data?.data;
+    try {
+      const res = await services.getTemplate(record.id);
+      const templateDetail = res?.data?.data;
 
-    form.setFieldsValue({
-      name: templateDetail.name,
-      description: templateDetail.description,
-      categoryId: templateDetail.template_category_id,
-      is_active: templateDetail.is_active,
-    });
+      form.setFieldsValue({
+        name: templateDetail.name,
+        description: templateDetail.description,
+        categoryId: templateDetail.template_category_id,
+        is_active: templateDetail.is_active,
+      });
 
-    const formattedFields = (templateDetail.fieldMappings).map((item) => ({
-      field_key: item.field?.field_key,
-      field_label: item.field?.field_label,
-      field_type: item.field?.field_type,
-    }));
+      const formattedFields = (templateDetail.fieldMappings || []).map((item) => ({
+        field_key: item.field?.field_key,
+        field_label: item.field?.field_label,
+        field_type: item.field?.field_type,
+      }));
 
-    setExtractedFields(formattedFields);
+      setExtractedFields(formattedFields);
 
-    setFileList(
-      templateDetail.file_path
-        ? [{ name: templateDetail.name}]
-        : []
-    );
-  } catch (error) {
-    console.error('Lỗi lấy chi tiết mẫu:', error);
-    message.error('Không thể lấy chi tiết mẫu văn bản');
-  } finally {
-    setExtracting(false);
-  }
-};
+      setFileList(
+        templateDetail.file_path
+          ? [{ name: templateDetail.name }]
+          : []
+      );
+    } catch (error) {
+      console.error('Lỗi lấy chi tiết mẫu:', error);
+      message.error('Không thể lấy chi tiết mẫu văn bản');
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const handleAddNew = () => {
     setEditingRecord(null);
@@ -172,53 +207,56 @@ export default function TemplatePage() {
     setModalVisible(true);
   };
 
-  const handleDeleteRecord = (id) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: 'Bạn có chắc chắn muốn xóa mẫu này?',
-      okText: 'Xóa',
-      cancelText: 'Hủy',
-      okButtonProps: { danger: true },
-      async onOk() {
-        try {
-          await services.deleteTemplate(id);
-          message.success('Xóa thành công');
-          fetchTemplates(filterCategory);
-        } catch (error) {
-          message.error(error?.response?.data?.message || 'Xóa thất bại');
-        }
-      },
-    });
-  };
+const handleDeleteRecord = (record) => {
+  Modal.confirm({
+    title: 'Xác nhận xóa',
+    content: 'Bạn có chắc chắn muốn khóa mẫu này?',
+    okText: 'Khóa',
+    cancelText: 'Hủy',
+    okButtonProps: { danger: true },
+    async onOk() {
+      const token = localStorage.getItem('access_token');
+      try {
+        await services.removeSoftTemplate(token, record.id);
+        message.success('Khóa mẫu thành công');
+        fetchTemplates(filterCategory);
+      } catch (error) {
+        message.error(error?.response?.data?.message || 'Khóa mẫu thất bại');
+      }
+    },
+  });
+};
+
 
   const handleSaveTemplate = async (values) => {
-    setSubmitLoading(true);
-    try {
-      const payload = {
-        name: values.name,
-        description: values.description,
-        categoryId: values.categoryId,
-        is_active: values.is_active,
-        fields: extractedFields,
-        file: fileList[0]?.originFileObj || fileList[0],
-      };
+  const token = localStorage.getItem('access_token');
+  setSubmitLoading(true);
+  try {
+    const payload = {
+      name: values.name,
+      description: values.description,
+      categoryId: values.categoryId,
+      is_active: values.is_active,
+      fields: extractedFields,
+      file: fileList[0]?.originFileObj || fileList[0],
+    };
 
-      if (editingRecord) {
-        await services.updateTemplate(editingRecord.id, payload);
-        message.success('Cập nhật thành công');
-      } else {
-        await services.createTemplate(payload);
-        message.success('Thêm mới thành công');
-      }
-
-      setModalVisible(false);
-      fetchTemplates(filterCategory);
-    } catch (error) {
-      message.error(error?.response?.data?.message || 'Có lỗi xảy ra khi lưu');
-    } finally {
-      setSubmitLoading(false);
+    if (editingRecord) {
+      await services.updateTemplate(token, editingRecord.id, payload);
+      message.success('Cập nhật thành công');
+    } else {
+      await services.createTemplate(token, payload);
+      message.success('Thêm mới thành công');
     }
-  };
+
+    setModalVisible(false);
+    fetchTemplates(filterCategory);
+  } catch (error) {
+    message.error(error?.response?.data?.message || 'Có lỗi xảy ra khi lưu');
+  } finally {
+    setSubmitLoading(false);
+  }
+};
 
   const columns = [
     {
@@ -259,7 +297,6 @@ export default function TemplatePage() {
       key: 'action',
       width: 140,
       render: (data) => (
-        console.log(data),
         <Space size="small">
           <Tooltip title="Xem file">
             <Button
@@ -277,7 +314,7 @@ export default function TemplatePage() {
               onClick={() => handleEditRecord(data)}
             />
           </Tooltip>
-          <Tooltip title="Xóa">
+          <Tooltip title="Khóa/Xóa">
             <Button
               danger
               size="small"
@@ -341,7 +378,6 @@ export default function TemplatePage() {
         />
       ),
     },
-    
     {
       title: '',
       key: 'action',
@@ -465,6 +501,38 @@ export default function TemplatePage() {
                             label: cat.name,
                             value: cat.id,
                           }))}
+                        dropdownRender={(menu) => (
+                          <>
+                            {menu}
+                            <Divider style={{ margin: '8px 0' }} />
+                            <div style={{ padding: '0 8px 4px' }} className="flex flex-col gap-2">
+                              <Input
+                                placeholder="Tên danh mục mới..."
+                                size="small"
+                                value={newCatName}
+                                onChange={(e) => setNewCatName(e.target.value)}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              />
+                              <Input
+                                placeholder="Mô tả danh mục (tùy chọn)..."
+                                size="small"
+                                value={newCatDesc}
+                                onChange={(e) => setNewCatDesc(e.target.value)}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              />
+                              <Button
+                                type="primary"
+                                size="small"
+                                icon={<PlusOutlined />}
+                                loading={createCatLoading}
+                                onClick={handleCreateCategory}
+                                className="w-full !bg-blue-600"
+                              >
+                                Thêm danh mục
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       />
                     </Form.Item>
                   </Col>
@@ -474,6 +542,7 @@ export default function TemplatePage() {
                       name="is_active"
                       rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
                       className="mb-3"
+                      initialValue={true}
                     >
                       <Select
                         placeholder="Chọn trạng thái"

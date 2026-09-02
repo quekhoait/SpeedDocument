@@ -155,9 +155,10 @@ const CreateDocumentScreen = () => {
     }
   };
 
+  console.log(documents)
 
   return (
-    <Base headerTitle="AI Document" activeTab={1} hasHeader={true}>
+    <Base headerTitle="AI Document" activeTab={1} hasHeader={true} hasNav={true}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -179,7 +180,7 @@ const CreateDocumentScreen = () => {
 
         <View className="flex-row gap-2 mb-4">
           <TouchableOpacity
-            onPress={() => navigation.navigate("draft")}
+            onPress={() => navigation.navigate("draft", { documentId: null, template: null })}
             className="flex-1 bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-sm"
           >
             <View className="w-10 h-10 bg-slate-200/60 rounded-xl items-center justify-center mb-3">
@@ -282,7 +283,7 @@ const CreateDocumentScreen = () => {
                     <ButtonComponent
                       title="Tiếp tục"
                       className="px-3 py-1.5 rounded-full text-xs"
-                      onPress={() => navigation.navigate("draft", { documentId: item.id })}
+                      onPress={() => navigation.navigate("draft", { documentId: item.id, sessionId: item.sessionId, template: item.template})}
                     />
                   </View>
                 )}

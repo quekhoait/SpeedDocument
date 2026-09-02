@@ -20,6 +20,27 @@ const buildTemplateFormData = (data) => {
 };
 
 export const services = {
+  
+  login: async (email, password) => {
+    return await Apis().post(endpoints.email_login, { email, password });
+  },
+
+  refreshToken: async(token)=> {
+    return await authApis(token).get(endpoints.refresh_token)
+  },
+
+  getUser: async(token)=>{
+    return await authApis(token).get(endpoints.get_user)
+  },
+
+  getAllUser: async(token)=>{
+    return await authApis(token).get(endpoints.get_all_user)
+  },
+  
+ createCategory: async (token, payload) => {
+  return await authApis(token).post(endpoints.create_category, payload);
+},
+
   getAllCategory: async () => {
     return await Apis().get(endpoints.get_all_category);
   },
@@ -43,17 +64,21 @@ export const services = {
     });
   },
 
- createTemplate: async (data) => {
-    const formData = buildTemplateFormData(data);
-    return await authApis().post(endpoints.create_template, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
+ createTemplate: async (token, data) => {
+  const formData = buildTemplateFormData(data);
+  return await authApis(token).post(endpoints.create_template, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+},
 
-  updateTemplate: async (id, data) => {
-    const formData = buildTemplateFormData(data);
-    return await authApis().put(endpoints.update_template(id), formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
+updateTemplate: async (token, id, data) => {
+  const formData = buildTemplateFormData(data);
+  return await authApis(token).put(endpoints.update_template(id), formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+},
+
+ removeSoftTemplate: async (token, id) => {
+  return await authApis(token).put(endpoints.remove_soft(id));
+},
 };
