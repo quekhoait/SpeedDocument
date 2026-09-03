@@ -26,7 +26,7 @@ import {
   InboxOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { services } from '../services';
 
 const ALL_CATEGORY = { id: 'ALL', name: 'Tất cả' };
@@ -56,9 +56,32 @@ export default function TemplatePage() {
     fetchCategories();
   }, []);
 
+  // Hàm gọi API lấy templates hỗ trợ cả categoryId và từ khóa kw
+  const fetchTemplates = useCallback(async (categoryId, keyword) => {
+    try {
+      setLoading(true);
+      const catParam = categoryId === 'ALL' ? undefined : categoryId;
+      const kwParam = keyword ? keyword.trim() : undefined;
+
+      const response = await services.get_all_templates(catParam, kwParam);
+      const data = response?.data?.data || [];
+      setTemplates(data);
+    } catch (error) {
+      console.error('Lỗi khi tải mẫu văn bản:', error);
+      message.error('Không thể tải danh sách template');
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    fetchTemplates(filterCategory);
-  }, [filterCategory]);
+    const timer = setTimeout(() => {
+      fetchTemplates(filterCategory, searchText);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [filterCategory, searchText, fetchTemplates]);
 
   const fetchCategories = async () => {
     try {
@@ -71,24 +94,8 @@ export default function TemplatePage() {
     }
   };
 
-  const fetchTemplates = async (categoryId) => {
-    try {
-      setLoading(true);
-      const catParam = categoryId === 'ALL' ? undefined : categoryId;
-      const response = await services.getTemplates(catParam);
-      const data = response?.data?.data || [];
-      setTemplates(data);
-    } catch (error) {
-      console.error('Lỗi khi tải mẫu văn bản:', error);
-      message.error('Không thể tải danh sách template');
-      setTemplates([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateCategory = async (e) => {
-    const token = localStorage.getItem("access_token")
+    const token = localStorage.getItem('access_token');
     e.preventDefault();
     if (!newCatName.trim()) {
       message.warning('Vui lòng nhập tên danh mục');
@@ -97,15 +104,13 @@ export default function TemplatePage() {
     setCreateCatLoading(true);
     try {
       const res = await services.createCategory(token, {
-  name: newCatName.trim(),
-  description: newCatDesc.trim(),
-});
+        name: newCatName.trim(),
+        description: newCatDesc.trim(),
+      });
       const newCategory = res?.data?.data;
 
       message.success('Thêm danh mục mới thành công');
       setCategories((prev) => [...prev, newCategory]);
-      
-      // Gán category vừa tạo vào form hiện tại
       form.setFieldsValue({ categoryId: newCategory.id });
 
       setNewCatName('');
@@ -185,12 +190,7 @@ export default function TemplatePage() {
       }));
 
       setExtractedFields(formattedFields);
-
-      setFileList(
-        templateDetail.file_path
-          ? [{ name: templateDetail.name }]
-          : []
-      );
+      setFileList(templateDetail.file_path ? [{ name: templateDetail.name }] : []);
     } catch (error) {
       console.error('Lỗi lấy chi tiết mẫu:', error);
       message.error('Không thể lấy chi tiết mẫu văn bản');
@@ -207,56 +207,55 @@ export default function TemplatePage() {
     setModalVisible(true);
   };
 
-const handleDeleteRecord = (record) => {
-  Modal.confirm({
-    title: 'Xác nhận xóa',
-    content: 'Bạn có chắc chắn muốn khóa mẫu này?',
-    okText: 'Khóa',
-    cancelText: 'Hủy',
-    okButtonProps: { danger: true },
-    async onOk() {
-      const token = localStorage.getItem('access_token');
-      try {
-        await services.removeSoftTemplate(token, record.id);
-        message.success('Khóa mẫu thành công');
-        fetchTemplates(filterCategory);
-      } catch (error) {
-        message.error(error?.response?.data?.message || 'Khóa mẫu thất bại');
-      }
-    },
-  });
-};
-
+  const handleDeleteRecord = (record) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa',
+      content: 'Bạn có chắc chắn muốn khóa mẫu này?',
+      okText: 'Khóa',
+      cancelText: 'Hủy',
+      okButtonProps: { danger: true },
+      async onOk() {
+        const token = localStorage.getItem('access_token');
+        try {
+          await services.removeSoftTemplate(token, record.id);
+          message.success('Khóa mẫu thành công');
+          fetchTemplates(filterCategory, searchText);
+        } catch (error) {
+          message.error(error?.response?.data?.message || 'Khóa mẫu thất bại');
+        }
+      },
+    });
+  };
 
   const handleSaveTemplate = async (values) => {
-  const token = localStorage.getItem('access_token');
-  setSubmitLoading(true);
-  try {
-    const payload = {
-      name: values.name,
-      description: values.description,
-      categoryId: values.categoryId,
-      is_active: values.is_active,
-      fields: extractedFields,
-      file: fileList[0]?.originFileObj || fileList[0],
-    };
+    const token = localStorage.getItem('access_token');
+    setSubmitLoading(true);
+    try {
+      const payload = {
+        name: values.name,
+        description: values.description,
+        categoryId: values.categoryId,
+        is_active: values.is_active,
+        fields: extractedFields,
+        file: fileList[0]?.originFileObj || fileList[0],
+      };
 
-    if (editingRecord) {
-      await services.updateTemplate(token, editingRecord.id, payload);
-      message.success('Cập nhật thành công');
-    } else {
-      await services.createTemplate(token, payload);
-      message.success('Thêm mới thành công');
+      if (editingRecord) {
+        await services.updateTemplate(token, editingRecord.id, payload);
+        message.success('Cập nhật thành công');
+      } else {
+        await services.createTemplate(token, payload);
+        message.success('Thêm mới thành công');
+      }
+
+      setModalVisible(false);
+      fetchTemplates(filterCategory, searchText);
+    } catch (error) {
+      message.error(error?.response?.data?.message || 'Có lỗi xảy ra khi lưu');
+    } finally {
+      setSubmitLoading(false);
     }
-
-    setModalVisible(false);
-    fetchTemplates(filterCategory);
-  } catch (error) {
-    message.error(error?.response?.data?.message || 'Có lỗi xảy ra khi lưu');
-  } finally {
-    setSubmitLoading(false);
-  }
-};
+  };
 
   const columns = [
     {
@@ -394,13 +393,6 @@ const handleDeleteRecord = (record) => {
     },
   ];
 
-  const filteredData = templates.filter((template) => {
-    return (
-      template.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-      template.description?.toLowerCase().includes(searchText.toLowerCase())
-    );
-  });
-
   return (
     <Card
       className="!rounded-xl !shadow-sm !border-gray-200 pb-6"
@@ -411,6 +403,7 @@ const handleDeleteRecord = (record) => {
         <Col xs={24} sm={12} lg={6}>
           <Input
             placeholder="Tìm kiếm mẫu..."
+            allowClear
             prefix={<SearchOutlined className="text-gray-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -450,7 +443,7 @@ const handleDeleteRecord = (record) => {
       <Table
         loading={loading}
         columns={columns}
-        dataSource={filteredData}
+        dataSource={templates}
         rowKey="id"
         pagination={{
           pageSize: 10,

@@ -17,12 +17,18 @@ export const endpoints = {
   'delete_category': (id) => `/admin/templates/category/${id}`,
 
   // Templates
-  'get_templates': (id) => (id && id !== 'ALL') ? `/templates/category/${id}` : '/templates/category',
+  'get_all_templates': '/templates/get-all',
   'get_template': (id) => `/templates/${id}`,
   'preview': '/templates/preview',
   'create_template': '/templates/create-template',
   'remove_soft': (id)=>`/templates/remove-soft/${id}`,
-  'update_template': (id) => `/templates/update/${id}`
+  'update_template': (id) => `/templates/update/${id}`,
+
+  //count
+  'count_templates': '/admin/count-templates',
+  'count_documents': '/admin/count-documents',
+  'count_users': '/admin/count-users',
+  'dashboard': '/admin/dashboard-analytics'
 
 };
 

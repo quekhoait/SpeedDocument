@@ -2,6 +2,10 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
+import DocumentPage from './pages/DocumentPage';
+import TemplatePage from './pages/TemplatePage';
+import SettingsPage from './pages/SettingsPage';
+import AdminPage from './layouts/AdminPage';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('access_token');
@@ -39,13 +43,19 @@ export default function AppRoutes() {
       />
 
       <Route
-        path="/admin/dashboard"
+        path="/admin"
         element={
           <ProtectedRoute>
-            <AdminDashboard />
+            <AdminPage />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="templates" element={<TemplatePage />} />
+        <Route path="documents" element={<DocumentPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
 
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/admin/login" replace />} />

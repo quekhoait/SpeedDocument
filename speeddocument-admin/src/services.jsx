@@ -45,8 +45,15 @@ export const services = {
     return await Apis().get(endpoints.get_all_category);
   },
 
-  getTemplates: async (id) => {
-    return await authApis().get(endpoints.get_templates(id));
+  get_all_templates: async (cateId, kw) => {
+    const params = {};
+    if (cateId && cateId !== "All") {
+      params.cateId = cateId;
+    }
+    if (kw && kw.trim()) {
+      params.kw = kw.trim();
+    }
+    return await Apis().get(endpoints.get_all_templates, { params });
   },
 
   getTemplate: async (id) => {
@@ -81,4 +88,21 @@ updateTemplate: async (token, id, data) => {
  removeSoftTemplate: async (token, id) => {
   return await authApis(token).put(endpoints.remove_soft(id));
 },
-};
+
+countTemplates: async (token, params) => {
+  return await authApis(token).get(endpoints.count_templates, { params });
+},
+
+countDocuments: async (token, params) => {
+  return await authApis(token).get(endpoints.count_documents, { params });
+},
+
+countUsers: async (token, params) => {
+  return await authApis(token).get(endpoints.count_users, { params });
+},
+
+dashboardAnalytics: async (token, params) => {
+  return await authApis(token).get(endpoints.dashboard, { params });
+},
+
+}

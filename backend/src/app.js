@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import authRouter from './routers/AuthRouter.js';
 import templateRouter from './routers/TemplateRouter.js';
 import documentRouter from './routers/DocumentRouter.js';
+import adminRouter from './routers/AdminRouter.js';
 // import uploadRouter from './routers/UploadRouter.js';
 import speedToTextRouter from './routers/SpeedToTextRouter.js'
 import { sequelize, createDatabaseIfNotExists } from './config.js';
@@ -23,7 +24,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRouter);
 app.use('/api/templates', templateRouter);
 app.use('/api/documents', documentRouter);
-app.use('/api', speedToTextRouter)
+app.use('/api', speedToTextRouter);
+app.use('/api/admin', adminRouter);
 
 
 const PORT = 5000;

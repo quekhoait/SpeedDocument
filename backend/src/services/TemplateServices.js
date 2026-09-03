@@ -72,8 +72,25 @@ const getTemplate = async (id) => {
   });
 };
 
-const getAllTemplate = async () => {
+const getAllTemplate = async (cateId, kw) => {
+  const condition = { };
+  if (cateId) {
+    condition.template_category_id = cateId;
+  }
+  if (kw && kw.trim()) {
+    condition.name = {
+      [Op.iLike]: `%${kw.trim()}%`,
+    };
+  }
   return await Template.findAll({
+    where: condition,
+    include: [
+      {
+        model: TemplateCategory,
+        as: "category",
+        attributes: ["id", "name"],
+      },
+    ],
     order: [["created_at", "DESC"]],
   });
 };

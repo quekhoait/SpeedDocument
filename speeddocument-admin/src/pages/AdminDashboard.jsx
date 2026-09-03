@@ -1,318 +1,125 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Card, Col, DatePicker, Radio, Row, Space, Spin, Statistic } from 'antd';
+import { FileOutlined, FileTextOutlined, TeamOutlined, TrophyOutlined } from '@ant-design/icons';
 import {
-  Layout,
-  Menu,
-  Button,
-  Avatar,
-  Space,
-  Dropdown,
-  message,
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Table,
-  Tag,
-  Modal,
-  Form,
-  Input,
-  Select,
-  Tooltip,
-} from 'antd';
-import {
-  DashboardOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  FileOutlined,
-  SettingOutlined,
-  LogoutOutlined,
-  UserOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  BellOutlined,
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import DocumentPage from './DocumentPage';
-import TemplatePage from './TemplatePage';
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip as ChartTooltip,
+} from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
 import { services } from '../services';
 
-const { Header, Sider, Content } = Layout;
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, ChartTooltip, Legend);
+
+const { RangePicker } = DatePicker;
 
 export default function AdminDashboard() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [selectedMenu, setSelectedMenu] = useState('dashboard');
-  const [currentUser, setCurrentUser] = useState();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    message.success('Đã đăng xuất');
-    navigate('/admin/login');
-  };
-
-  const getUser = async (token) => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    try {
-      const res = await services.getUser(token);
-      if (res.data?.status === "OK" || res.status === 200) {
-        setCurrentUser(res.data?.user || res.data);
-      }
-    } catch (error) {
-      if (error.response?.status === 401 && refreshToken) {
-        try {
-          const refreshRes = await services.refreshToken(refreshToken);
-          if (refreshRes.data?.status === "OK" || refreshRes.status === 200) {
-            const newAccessToken = refreshRes.data?.accessToken;
-            localStorage.setItem('access_token', newAccessToken);
-            await getUser(newAccessToken);
-          } 
-        } catch (refreshError) {
-          console.error('Refresh token failed:', refreshError);
-        }
-      } else {
-        console.log(error);
-      }
-    }
-  };
+  const [filterType, setFilterType] = useState('month');
+  const [customRange, setCustomRange] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [statsData, setStatsData] = useState({
+    totalTemplates: 0,
+    totalDocuments: 0,
+    totalUsers: 0,
+    topTemplate: 'Chưa có',
+    topTemplateCount: 0,
+    topTemplatesList: [],
+  });
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      getUser(token);
-    } else {
-      handleLogout();
-    }
-  }, []);
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
 
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      console.log('Fetching dashboard data with filterType:', filterType, 'and customRange:', customRange);
+      try {
+        const params = {
+          filterType,
+          startDate: customRange?.[0]?.toISOString(),
+          endDate: customRange?.[1]?.toISOString(),
+        };
+        console.log('Fetching dashboard data with params:', params);
+        const [templates, documents, users, analytics] = await Promise.all([
+            services.countTemplates(token, params),
+            services.countDocuments(token, params),
+            services.countUsers(token, params),
+            services.dashboardAnalytics(token, params),
+        ]);
 
+        const analyticsData = analytics.data?.data;
+        const topTemplate = analyticsData.topTemplate || { name: 'Chưa có', count: 0 };
+        setStatsData({
+          totalTemplates: templates.data?.data,
+          totalDocuments: documents.data?.data,
+          totalUsers: users.data?.data,
+          topTemplate: topTemplate?.name,
+          topTemplateCount: topTemplate?.count,
+          topTemplatesList: analyticsData?.topTemplates,
+        });
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu thống kê:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchDashboardData();
+  }, [filterType, customRange]);
 
-  const userMenuItems = [
-    {
-      key: 'settings',
-      label: 'Cài đặt',
-      icon: <SettingOutlined />,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'logout',
-      label: 'Đăng xuất',
-      icon: <LogoutOutlined />,
-      danger: true,
-      onClick: handleLogout,
-    },
-  ];
+  const barChartData = useMemo(() => ({
+    labels: statsData.topTemplatesList.length ? statsData.topTemplatesList.map((item) => item.name) : ['Không có dữ liệu'],
+    datasets: [{
+      label: 'Số lần sử dụng',
+      data: statsData.topTemplatesList.length ? statsData.topTemplatesList.map((item) => item.count) : [0],
+      backgroundColor: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+      borderRadius: 6,
+    }],
+  }), [statsData.topTemplatesList]);
 
-  const menuItems = [
-    {
-      key: 'dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
-      key: 'templates',
-      icon: <FileOutlined />,
-      label: 'Quản lý Mẫu',
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: 'Cài đặt',
-    },
-  ];
-
-  const dashboardStats = [
-    { label: 'Tổng Tài liệu', value: 1234, icon: <FileTextOutlined /> },
-    { label: 'Mẫu', value: 89, icon: <FileOutlined /> },
-  ];
-
-  const recentDocuments = [
-    {
-      id: 1,
-      name: 'Hướng dẫn sử dụng',
-      author: 'Admin',
-      date: '2024-01-15',
-      status: 'active',
-      views: 1250,
-    },
-    {
-      id: 2,
-      name: 'Chính sách bảo mật',
-      author: 'Admin',
-      date: '2024-01-10',
-      status: 'active',
-      views: 890,
-    },
-    {
-      id: 3,
-      name: 'Điều khoản sử dụng',
-      author: 'User',
-      date: '2024-01-05',
-      status: 'pending',
-      views: 456,
-    },
-  ];
-
-  const columns = [
-    {
-      title: 'Tiêu đề',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text) => <strong>{text}</strong>,
-    },
-    {
-      title: 'Tác giả',
-      dataIndex: 'author',
-      key: 'author',
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'date',
-      key: 'date',
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const color = status === 'active' ? 'green' : 'orange';
-        const text = status === 'active' ? 'Kích hoạt' : 'Chờ duyệt';
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: 'Lượt xem',
-      dataIndex: 'views',
-      key: 'views',
-    },
-  ];
-
-  const renderContent = () => {
-    switch (selectedMenu) {
-      case 'dashboard':
-        return (
-          <div className="w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-
-            {/* Statistics Cards */}
-            <Row gutter={[16, 16]} className="mb-8">
-              {dashboardStats.map((stat, index) => (
-                <Col key={index} xs={24} sm={12} lg={6}>
-                  <Card
-                    hoverable
-                    className="!rounded-xl !shadow-sm hover:!shadow-lg hover:!-translate-y-1 transition-all duration-300"
-                    bordered={false}
-                  >
-                    <Statistic
-                      title={<span className="text-sm font-medium text-gray-600">{stat.label}</span>}
-                      value={stat.value}
-                      prefix={<span className="text-2xl">{stat.icon}</span>}
-                      valueStyle={{ color: '#667eea', fontSize: '28px', fontWeight: '700' }}
-                    />
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-
-            <Card
-              title={<span className="text-lg font-semibold text-gray-900">Tài liệu gần đây</span>}
-              className="!rounded-xl !shadow-sm !border-gray-200"
-              bodyStyle={{ padding: '16px' }}
-            >
-              <Table
-                columns={columns}
-                dataSource={recentDocuments}
-                pagination={false}
-                size="small"
-                rowKey="id"
-                className="!text-sm"
-              />
-            </Card>
-          </div>
-        );
-
-      case 'documents':
-        return <DocumentPage />;
-
-      case 'templates':
-        return <TemplatePage />;
-
-      case 'settings':
-        return (
-          <Card
-            title={<span className="text-lg font-semibold text-gray-900">Cài đặt Hệ thống</span>}
-            className="!rounded-xl !shadow-sm"
-          >
-            <p className="text-gray-600">Các cài đặt hệ thống sẽ hiển thị ở đây</p>
-          </Card>
-        );
-
-      default:
-        return <div>Dashboard</div>;
-    }
-  };
+  const doughnutData = useMemo(() => ({
+    labels: ['Tài liệu', 'Người dùng', 'Mẫu'],
+    datasets: [{
+      data: [statsData.totalDocuments, statsData.totalUsers, statsData.totalTemplates],
+      backgroundColor: ['#4f46e5', '#06b6d4', '#10b981'],
+      hoverOffset: 4,
+    }],
+  }), [statsData.totalDocuments, statsData.totalUsers, statsData.totalTemplates]);
 
   return (
-    <Layout className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        className="!fixed !left-0 !top-0 !bottom-0 !overflow-auto !h-screen"
-        style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        }}
-      >
-        <div className="flex items-center justify-center gap-3 h-16 border-b border-white/10 px-4">
-          <DashboardOutlined style={{ fontSize: '28px', color: '#fff' }} />
-          {!collapsed && <h2 className="m-0 text-lg font-bold text-white whitespace-nowrap">SpeedDoc</h2>}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          defaultSelectedKeys={['dashboard']}
-          items={menuItems}
-          onClick={(e) => setSelectedMenu(e.key)}
-          className="!bg-transparent !border-none"
-        />
-      </Sider>
-
-      {/* Main Layout */}
-      <Layout style={{ marginLeft: collapsed ? 80 : 200 }} className="transition-all duration-300">
-        {/* Header */}
-        <Header className="!bg-white !p-0 !shadow-sm !border-b !border-gray-200 !flex !justify-between !items-center">
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="!text-lg !w-16 !h-16 hover:!bg-gray-100"
-          />
-
-          <Space size="large" className="mr-6">
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Button type="text" className="hover:!bg-gray-100">
-                <Space size="small">
-                  <Avatar icon={<UserOutlined />} className="!bg-blue-600" />
-                  <span className="text-gray-700 font-medium">{currentUser?.fullname}</span>
-                </Space>
-              </Button>
-            </Dropdown>
+    <Spin spinning={loading}>
+      <div className="w-full space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 m-0">Tổng quan & Phân tích</h2>
+            <p className="text-gray-500 text-sm m-0">Thống kê dữ liệu hệ thống</p>
+          </div>
+          <Space wrap>
+            <Radio.Group value={filterType} onChange={(event) => setFilterType(event.target.value)} buttonStyle="solid">
+              <Radio.Button value="today">Hôm nay</Radio.Button>
+              <Radio.Button value="month">Tháng này</Radio.Button>
+              <Radio.Button value="year">Năm nay</Radio.Button>
+              <Radio.Button value="custom">Tùy chọn</Radio.Button>
+            </Radio.Group>
+            {filterType === 'custom' && <RangePicker onChange={setCustomRange} />}
           </Space>
-        </Header>
-
-        {/* Content */}
-        <Content className="p-6 overflow-auto min-h-full">
-          {renderContent()}
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}><Card bordered={false} className="!rounded-xl !shadow-sm"><Statistic title="Tổng Tài Liệu Tạo Ra" value={statsData.totalDocuments} prefix={<FileTextOutlined className="text-indigo-600" />} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card bordered={false} className="!rounded-xl !shadow-sm"><Statistic title="Tổng Số Mẫu" value={statsData.totalTemplates} prefix={<FileOutlined className="text-emerald-500" />} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card bordered={false} className="!rounded-xl !shadow-sm"><Statistic title="Tổng Số Người Dùng" value={statsData.totalUsers} prefix={<TeamOutlined className="text-cyan-600" />} /></Card></Col>
+          <Col xs={24} sm={12} lg={6}><Card bordered={false} className="!rounded-xl !shadow-sm"><Statistic title="Lượt Dùng Mẫu Top 1" value={statsData.topTemplateCount} prefix={<TrophyOutlined className="text-amber-500" />} /><div className="text-xs text-gray-500 truncate mt-1">{statsData.topTemplate}</div></Card></Col>
+        </Row>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={16}><Card title="Top Mẫu Được Dùng Nhiều Nhất" bordered={false} className="!rounded-xl !shadow-sm"><div className="h-72"><Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} /></div></Card></Col>
+          <Col xs={24} lg={8}><Card title="Tỉ Lệ Dữ Liệu Hệ Thống" bordered={false} className="!rounded-xl !shadow-sm"><div className="h-72 flex items-center justify-center"><Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} /></div></Card></Col>
+        </Row>
+      </div>
+    </Spin>
   );
 }
