@@ -262,7 +262,7 @@ const DraftScreen = () => {
     inputRef.current?.focus();
     const fields = item?.missingFields?.length > 0 ? item.missingFields : missingFields;
     if (fields && fields.length > 0) {
-      const templateText = fields.map((f) => `${f.field_label || f.label}: `).join("\n");
+      const templateText = fields.map((f) => `${f.label}: `).join("\n");
       setInputText(templateText);
     }
   };

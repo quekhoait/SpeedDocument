@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Linking,
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +15,9 @@ import ButtonComponent from "../components/ButtonComponent";
 import { authService } from "../services/authServices";
 import { AuthContext } from "../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+
 
 const Login = () => {
   const { refreshUser } = useContext(AuthContext);
@@ -40,47 +42,83 @@ const Login = () => {
       icon: null,
     },
   ];
+ 
+  WebBrowser.maybeCompleteAuthSession();
 
-  const handleLoginWithEmail= async()=>{
-    const {email, password} = user;
-    if(!email || !password){
+const handleGoogleLogin = async () => {
+  try {
+    const redirectUrl = Linking.createURL("oauth");
+    const res = await authService.loginWithGoogle(redirectUrl);
+    const authUrl = res?.url;
+
+    if (!authUrl) {
+      Alert.alert("Lỗi", "Backend không trả về link đăng nhập.");
+      return;
+    }
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
+      showInRecents: true,
+      preferEphemeralSession: true, 
+    });
+
+    if (result.type === "success" && result.url) {
+      const parsed = Linking.parse(result.url);
+      const { accessToken, error } = parsed.queryParams || {};
+      if (error) {
+        Alert.alert("Lỗi", "Đăng nhập Google thất bại.");
+        return;
+      }
+      if (accessToken) {
+        await AsyncStorage.setItem("access_token", accessToken);
+        navigation.navigate("home");
+        await refreshUser();
+      }
+    }
+  } catch (err) {
+    console.error("Lỗi khi đăng nhập Google:", err?.response?.data || err.message);
+    Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
+  }
+};
+
+  const handleLoginWithEmail = async () => {
+    const { email, password } = user;
+    if (!email || !password) {
       Alert.alert("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-     setLoading(true)
-     try{
+    setLoading(true);
+    try {
       const loginPayload = {
         email: email,
-        password: password
-      }
-      const response = await authService.loginWithEmail(loginPayload)
-      console.log(response)
-      if(response){
+        password: password,
+      };
+      const response = await authService.loginWithEmail(loginPayload);
+      console.log(response);
+      if (response) {
         const { accessToken, refreshToken } = response.data;
-       
+
         if (accessToken && refreshToken) {
-            await AsyncStorage.setItem('access_token',accessToken);
-            await AsyncStorage.setItem('refresh_token',refreshToken);
+          await AsyncStorage.setItem("access_token", accessToken);
+          await AsyncStorage.setItem("refresh_token", refreshToken);
         }
-        Alert.alert('Thành công', 'Đăng nhập thành công!')
-        await refreshUser()
-        navigation.navigate('home')
-      }else{
-          Alert.alert('Thất bại', response?.data.message)
+        Alert.alert("Thành công", "Đăng nhập thành công!");
+        await refreshUser();
+        navigation.navigate("home");
+      } else {
+        Alert.alert("Thất bại", response?.data.message);
       }
-     }catch (error) {
-    console.error("Lỗi đăng nhập:", error);
-    
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      "Đã có lỗi xảy ra, vui lòng thử lại!";
-      
-    Alert.alert("Lỗi", errorMessage);
-  } finally {
-    setLoading(false);
-  }
-  }
+    } catch (error) {
+      console.error("Lỗi đăng nhập:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Đã có lỗi xảy ra, vui lòng thử lại!";
+
+      Alert.alert("Lỗi", errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView
@@ -139,7 +177,7 @@ const Login = () => {
 
           <View className="flex-row justify-between space-x-3">
             <TouchableOpacity
-              // onPress={handleLoginGoogle}
+              onPress={handleGoogleLogin}
               disabled={loading}
               className={`flex-1 flex-row items-center justify-center bg-slate-300 py-3 ${loading ? "opacity-50" : ""}`}
             >

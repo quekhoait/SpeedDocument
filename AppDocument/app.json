@@ -2,6 +2,7 @@
   "expo": {
     "name": "app-document",
     "slug": "app-document",
+    "scheme": "document",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

@@ -259,7 +259,7 @@ const getFieldByTemplateId = async (templateId) => {
     ],
   });
   if (!template) return [];
-  return template.fieldMappings.filter((m) = !m.placeholder.includes("chu_ky")).map((mapping) => ({
+  return template.fieldMappings.filter((m) => !m.placeholder.includes("chu_ky")).map((mapping) => ({
     placeholder: mapping.placeholder,
     is_required: mapping.is_required,
     field_key: mapping.field.field_key,

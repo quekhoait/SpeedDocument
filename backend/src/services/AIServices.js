@@ -107,6 +107,7 @@ ${fields
                 label: { type: Type.STRING },
                 question: { type: Type.STRING },
               },
+              required: ["placeholder", "label", "question"],
             },
           },
           isComplete: { type: Type.BOOLEAN },

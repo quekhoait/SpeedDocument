@@ -1,8 +1,32 @@
-import * as Speech from "expo-speech";
-import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { createAudioPlayer, AudioModule } from "expo-audio";
 
-let activeAudioPlayer = null;
+let activePlayer = null;
 
+// Hàm an toàn bật loa ngoài và hủy cờ recording
+const ensurePlaybackMode = async () => {
+  try {
+    if (AudioModule && typeof AudioModule.setAudioModeAsync === "function") {
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+    }
+  } catch (err) {
+    console.warn("Lỗi setAudioMode:", err);
+  }
+};
+
+export const stopSpeech = async () => {
+  if (activePlayer) {
+    try {
+      activePlayer.pause();
+      activePlayer.remove();
+    } catch (_) {}
+    finally {
+      activePlayer = null;
+    }
+  }
+};
 
 export const generateSpeechFromMissingFields = async (
   missingFields = [],
@@ -71,21 +95,22 @@ Quy tắc:
   }
 };
 
+export const speakWithOpenAI = async (text) => {
+  if (!text || typeof text !== "string" || !text.trim()) return;
 
-export const speakWithOpenAI = async(text)=> {
+  try {
+    await stopSpeech();
+    await ensurePlaybackMode();
 
-}
+    const encodedText = encodeURIComponent(text.trim().slice(0, 200));
+    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
 
-export const stopSpeech = async () => {
-  await Speech.stop();
-
-  if (activeAudioPlayer) {
-    try {
-      activeAudioPlayer.pause();
-      activeAudioPlayer.remove();
-    } catch (_) {}
-    finally {
-      activeAudioPlayer = null;
-    }
+    activePlayer = createAudioPlayer({ uri: audioUrl });
+    activePlayer.play();
+  } catch (error) {
+    console.error("Lỗi phát giọng nói Online:", error);
   }
 };
+
+export const speakWithGoogleAPI = speakWithOpenAI;
+export const speakResponse = speakWithOpenAI;

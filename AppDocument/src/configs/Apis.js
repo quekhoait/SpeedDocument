@@ -9,7 +9,7 @@ export const endpoints = {
     'log_out': '/auth/log_out',
     'save_signature': '/auth/save-signature',
     'update': '/auth/update',
-
+    'google_login': '/auth/google/url',
     'get_all_category': '/templates/get_categories',
     'search': '/templates/search',
     'create_template':'/templates/create-template',

@@ -6,6 +6,49 @@ import myCache from "../utils/cache.js";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
 
+
+const findOrCreateGoogleUser = async ({ googleId, email, username, avatar }) => {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    let user = await User.findOne({ where: { email: cleanEmail } });
+    if (user) {
+      const authGoogle = await AuthMethod.findOne({
+        where: { user_id: user.id, provider: "google" },
+      });
+      if (!authGoogle) {
+        const error = new Error("Email này đã được đăng ký bằng mật khẩu thông thường. Vui lòng đăng nhập bằng mật khẩu!");
+        error.statusCode = 400;
+        throw error;
+      }
+      if (!user.avatar && avatar) {
+        user.avatar = avatar;
+        await user.save();
+      }
+      return user;
+    }
+    const baseUsername = (username || cleanEmail.split("@")[0]).replace(/\s+/g, "").toLowerCase();
+    const uniqueUsername = `${baseUsername}_${Math.random().toString(36).substring(2, 6)}`;
+    user = await User.create({
+      username: uniqueUsername,
+      email: cleanEmail,
+      avatar: avatar || null,
+      role: "user",
+      password: bcrypt.hashSync(Math.random().toString(36).slice(-10), 10),
+    });
+
+    await AuthMethod.create({
+      user_id: user.id,
+      provider: "google",
+      providerId: String(googleId),
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Lỗi AuthServices findOrCreateGoogleUser:", error.message);
+    throw error;
+  }
+};
+
 const sendOTPEmail = async (email) => {
   const existingUser = await User.findOne({ where: { email } });
   if (existingUser) {
@@ -205,5 +248,6 @@ export default {
   verifyOTP,
   saveSignature,
    updateUser,
-   getAllUser
+   getAllUser,
+   findOrCreateGoogleUser
 };

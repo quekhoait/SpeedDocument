@@ -29,7 +29,6 @@ import {
 import { templateService } from "../services/templateServices";
 import {
   generateSpeechFromMissingFields,
-  speakResponse,
   speakWithGoogleAPI,
   speakWithOpenAI,
   stopSpeech,
@@ -76,12 +75,8 @@ const VoiceAIScreen = () => {
           Alert.alert("Thông báo", "Ứng dụng cần quyền Microphone để ghi âm.");
           return;
         }
-        await setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
       } catch (err) {
-        console.error("Lỗi Microphone:", err);
+        console.error("Lỗi xin quyền Microphone:", err);
       }
     })();
 
@@ -105,11 +100,9 @@ const VoiceAIScreen = () => {
 
   const getToken = async () => await AsyncStorage.getItem("access_token");
 
-  // Hàm xử lý tạo prompt & gọi API TTS để đọc thành tiếng
   const handleSpeakResponse = async (fields = [], complete = false) => {
     try {
       const textToSpeak = await generateSpeechFromMissingFields(fields, complete);
-      console.log("Nội dung AI chuẩn bị đọc:", textToSpeak);
       await speakWithOpenAI(textToSpeak);
     } catch (err) {
       console.error("Lỗi phát giọng nói:", err);
@@ -119,11 +112,12 @@ const VoiceAIScreen = () => {
   const startRecording = async () => {
     try {
       if (isProcessing) return;
-      stopSpeech();
+      await stopSpeech();
 
       const perm = await AudioModule.requestRecordingPermissionsAsync();
       if (!perm.granted) return Alert.alert("Thông báo", "Chưa cấp quyền microphone.");
 
+      // Bật chế độ ghi âm
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
@@ -139,6 +133,10 @@ const VoiceAIScreen = () => {
       setIsRecording(false);
       setIsProcessing(true);
       await audioRecorder.stop();
+
+      // Giải phóng chế độ ghi âm ngay sau khi dừng để sẵn sàng phát qua loa ngoài
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+
       if (!audioRecorder.uri) throw new Error("File ghi âm không tồn tại.");
 
       const res = await documentServices.speedToText(audioRecorder.uri);
@@ -191,7 +189,7 @@ const VoiceAIScreen = () => {
         }));
         setMissingFields(fieldsToAsk);
 
-        handleSpeakResponse(fieldsToAsk, false);
+        await handleSpeakResponse(fieldsToAsk, false);
 
         await saveChatMessage(
           sessionId,
@@ -213,7 +211,7 @@ const VoiceAIScreen = () => {
     const prompt = inputText.trim();
     if (!prompt || isProcessing || isRecording) return;
 
-    stopSpeech();
+    await stopSpeech();
     setIsProcessing(true);
     setInputText("");
     const currSession = sessionId;
@@ -244,7 +242,7 @@ const VoiceAIScreen = () => {
       if (phase === "TEMPLATE_DRAFTING") {
         setDynamicTemplateData(data.templateData);
         setDynamicFileUrl(data.fileUrl);
-        speakWithGoogleAPI("Đã cập nhật bản nháp mẫu. Bạn có thể nói tiếp để chỉnh sửa hoặc bấm lưu mẫu.");
+        await speakWithGoogleAPI("Đã cập nhật bản nháp mẫu. Bạn có thể nói tiếp để chỉnh sửa hoặc bấm lưu mẫu.");
       } else {
         const currentMissing = data?.missingFields || [];
         setMissingFields(currentMissing);
@@ -274,7 +272,7 @@ const VoiceAIScreen = () => {
       }
 
       console.error("Lỗi Process AI:", err);
-      speakWithGoogleAPI(errMsg);
+      await speakWithGoogleAPI(errMsg);
       await saveChatMessage(currSession, "ai_question", errMsg, []);
     } finally {
       setIsProcessing(false);
@@ -437,7 +435,6 @@ const VoiceAIScreen = () => {
           )}
         </View>
 
-        {/* 1. Ô INPUT TRÊN CÙNG */}
         <View className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
           <View className="bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm">
             <TextInput
@@ -458,7 +455,6 @@ const VoiceAIScreen = () => {
           </View>
         </View>
 
-        {/* 2. KHUNG CHAT Ở GIỮA */}
         <View className="flex-1 bg-white">
           <FlatList
             ref={flatListRef}
@@ -479,7 +475,6 @@ const VoiceAIScreen = () => {
           />
         </View>
 
-        {/* 3. NÚT GHI ÂM VÀ GỬI NGANG HÀNG - CÁCH ĐÁY 40 */}
         <View
           style={{ marginBottom: 40 }}
           className="px-6 pt-3 bg-white border-t border-slate-100"

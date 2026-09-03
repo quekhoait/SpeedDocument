@@ -77,7 +77,6 @@ export const subscribeChatMessages = (sessionId, callback) => {
   return unsubscribe;
 };
 
-// 3. Chuyển tin nhắn từ session tạm sang documentId chính thức
 export const migrateSessionMessages = async (oldSessionId, newDocumentId) => {
   if (!oldSessionId || !newDocumentId || oldSessionId === newDocumentId) return;
 

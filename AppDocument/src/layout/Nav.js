@@ -23,10 +23,9 @@ const Nav = ({ activeTab = 0 }) => {
 
     if (item.id === 2) {
       if (currentUser) {
-        console.log(1)
         navigation.navigate('profile')
       } else {
-        navigation.navigate('register') 
+        navigation.navigate('regis') 
       }
       return;
     }

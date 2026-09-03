@@ -61,10 +61,10 @@ const RefreshToken = sequelize.define('RefreshToken', {
     timestamps: true
 });
 
-User.hasMany(AuthMethod, { foreignKey: 'userId', as: 'authMethods' });
-AuthMethod.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-User.hasMany(RefreshToken, { foreignKey: 'userId', as: 'refreshTokens' });
-RefreshToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(AuthMethod, { foreignKey: 'user_id', as: 'authMethods' });
+AuthMethod.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(RefreshToken, { foreignKey: 'user_id', as: 'refreshTokens' });
+RefreshToken.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 
 export { User, AuthMethod, RefreshToken, UserRole };

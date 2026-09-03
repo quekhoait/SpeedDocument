@@ -3,6 +3,105 @@ import otpGenerator from "otp-generator";
 import AuthServices from "../services/AuthServices.js";
 import JwtServices from "../services/jwtServices.js";
 import CloudServices from "../services/CloudServices.js";
+import axios from "axios";
+import querystring from "querystring";
+
+const getGoogleAuthUrl = async (req, res) => {
+  try {
+    const { returnUrl } = req.query;
+    const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+    const options = {
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      access_type: "offline",
+      response_type: "code",
+      prompt: "consent",
+      state: returnUrl || "",
+      scope: "openid email profile",
+    };
+    const authUrl = `${rootUrl}?${new URLSearchParams(options).toString()}`;
+    return res.status(200).json({
+      status: "OK",
+      url: authUrl,
+    });
+  } catch (err) {
+    console.error("Lỗi Controller Get Google Auth URL:", err);
+    return res.status(500).json({
+      status: "ERR",
+      message: err.message,
+    });
+  }
+};
+
+const loginWithGoogle = async (req, res) => {
+  const targetRedirectUrl = req.query.state || process.env.FRONTEND_URL || "http://localhost:3000/login-success";
+  try {
+    const { code } = req.query;
+
+    if (!code) {
+      const separator = targetRedirectUrl.includes("?") ? "&" : "?";
+      return res.redirect(`${targetRedirectUrl}${separator}error=missing_code`);
+    }
+
+    const tokenRes = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        grant_type: "authorization_code",
+      }).toString(),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    const { access_token } = tokenRes.data;
+
+    const googleUserRes = await axios.get(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }
+    );
+
+    const googleUser = googleUserRes.data; // { id, email, name, picture }
+
+    let userResult = await AuthServices.findOrCreateGoogleUser({
+      googleId: googleUser.id,
+      email: googleUser.email,
+      username: googleUser.name,
+      avatar: googleUser.picture,
+    });
+
+    const user = userResult.user || userResult;
+
+    const userData = {
+      id: user.id,
+      role: user.role,
+    };
+
+    const accessToken = JwtServices.genneralAccessToken(userData);
+    const refreshToken = JwtServices.genneralRefreshToken(userData);
+
+    await AuthServices.saveRefreshToken(user.id, refreshToken);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "strict",
+    });
+
+    const separator = targetRedirectUrl.includes("?") ? "&" : "?";
+    return res.redirect(`${targetRedirectUrl}${separator}accessToken=${accessToken}`);
+
+  } catch (err) {
+    console.error("Lỗi Controller Login With Google:", err.response?.data || err.message);
+    const separator = targetRedirectUrl.includes("?") ? "&" : "?";
+    return res.redirect(`${targetRedirectUrl}${separator}error=google_auth_failed`);
+  }
+};
 
 const sendOTP = async (req, res) => {
   try {
@@ -126,6 +225,7 @@ const loginUser = async (req, res) => {
   }
 };
 
+
 const getUser = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -203,7 +303,7 @@ const logoutUser = async (req, res) => {
 const saveSignature = async(req, res) => {
  try {
       const userId = req.user.id;
-    const { signatureData } = req.body; 
+    const { signatureData } = req.body;
     if (!userId || !signatureData) {
       return res.status(400).json({
         status: "ERR",
@@ -223,7 +323,7 @@ const saveSignature = async(req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const userId = req.user.id; 
+    const userId = req.user.id;
     const userData = req.body;
     let avatarUrl = null;
     if (req.file) {
@@ -231,11 +331,11 @@ const updateUser = async (req, res) => {
         req.file.buffer,
         req.file.originalname
       );
-      avatarUrl = result.secure_url; 
+      avatarUrl = result.secure_url;
     }
     const updatedUser = await AuthServices.updateUser(userId, {
       ...userData,
-      avatar: avatarUrl, 
+      avatar: avatarUrl,
     });
 
     return res.status(200).json({
@@ -279,5 +379,7 @@ export default {
   sendOTP,
   saveSignature,
   updateUser,
-  getAllUser
+  getAllUser,
+  getGoogleAuthUrl,
+  loginWithGoogle
 };

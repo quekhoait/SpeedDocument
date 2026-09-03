@@ -1,0 +1,76 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyInterpreterInspection" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="false" level="WARNING" enabled_by_default="false">
+      <option name="ignoredPackages">
+        <list>
+          <option value="annotated-types" />
+          <option value="attrs" />
+          <option value="Authlib" />
+          <option value="blinker" />
+          <option value="cachelib" />
+          <option value="certifi" />
+          <option value="cffi" />
+          <option value="charset-normalizer" />
+          <option value="click" />
+          <option value="colorama" />
+          <option value="cryptography" />
+          <option value="dnspython" />
+          <option value="email-validator" />
+          <option value="Flask" />
+          <option value="Flask-Admin" />
+          <option value="Flask-Caching" />
+          <option value="Flask-JWT-Extended" />
+          <option value="Flask-Mail" />
+          <option value="flask-marshmallow" />
+          <option value="Flask-SQLAlchemy" />
+          <option value="google-auth" />
+          <option value="greenlet" />
+          <option value="h11" />
+          <option value="idna" />
+          <option value="itsdangerous" />
+          <option value="Jinja2" />
+          <option value="MarkupSafe" />
+          <option value="marshmallow" />
+          <option value="marshmallow-sqlalchemy" />
+          <option value="outcome" />
+          <option value="pyasn1" />
+          <option value="pyasn1_modules" />
+          <option value="pycparser" />
+          <option value="pydamic" />
+          <option value="pydantic" />
+          <option value="pydantic_core" />
+          <option value="PyJWT" />
+          <option value="PyMySQL" />
+          <option value="PySocks" />
+          <option value="requests" />
+          <option value="selenium" />
+          <option value="services" />
+          <option value="six" />
+          <option value="sniffio" />
+          <option value="sortedcontainers" />
+          <option value="SQLAlchemy" />
+          <option value="trio" />
+          <option value="trio-websocket" />
+          <option value="typing_extensions" />
+          <option value="urllib3" />
+          <option value="websocket-client" />
+          <option value="Werkzeug" />
+          <option value="wsproto" />
+          <option value="WTForms" />
+          <option value="flask-jwt" />
+          <option value="flask-jwt-extended" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyStubPackagesAdvertiser" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="scipy" />
+          <option value="djangorestframework" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

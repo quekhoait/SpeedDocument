@@ -14,5 +14,7 @@ router.post('/logout', authMiddleware.verifyToken, AuthController.logoutUser);
 router.post('/save-signature', authMiddleware.verifyToken,AuthController.saveSignature )
 router.put('/update', authMiddleware.verifyToken, uploadAvatar('avatar'), AuthController.updateUser);
 router.get('/get-all-user', authMiddleware.verifyToken, authMiddleware.authAdminMiddleWare, AuthController.getAllUser)
+router.get('/google/url', AuthController.getGoogleAuthUrl);
+router.get('/google/callback', AuthController.loginWithGoogle);
 
 export default router;

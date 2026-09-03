@@ -37,5 +37,16 @@ export const authService = {
 
     getDocuments: async (token) => {
         return await authApis(token).get(endpoints.get_documents)
-    }
+    },
+
+    logout: async (token) => {
+        return await authApis(token).post(endpoints.log_out);
+    },
+
+   loginWithGoogle: async (returnUrl) => {
+  const res = await Apis().get(endpoints.google_login, {
+    params: { returnUrl },
+  });
+  return res.data;
+},
 };
