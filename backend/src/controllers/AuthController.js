@@ -285,7 +285,7 @@ const logoutUser = async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) return res.sendStatus(204);
-    const logout = await AuthServices.logoutUser(refreshToken);
+    await AuthServices.logoutUser(refreshToken);
     res.clearCookie("refreshToken");
     return res.status(200).json({
       status: "OK",

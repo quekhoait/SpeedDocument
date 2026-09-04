@@ -1,4 +1,4 @@
-import AIServices from "../services/AIServices.js";
+import { speechToText } from "../AIServices/speechService.js";
 
 
 export const speedToText = async (req, res) => {
@@ -9,10 +9,8 @@ export const speedToText = async (req, res) => {
         message: "Vui lòng tải lên file âm thanh (audio).",
       });
     }
-
     const mimeType = req.file.mimetype || "audio/m4a";
-
-    const result = await AIServices.SpeedToText({
+    const result = await speechToText({
       buffer: req.file.buffer,
       mimeType: mimeType,
     });

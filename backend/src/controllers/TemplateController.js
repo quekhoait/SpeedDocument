@@ -45,8 +45,8 @@ const getTemplates = async (req, res) => {
         data: data,
       });
     }catch(err){
-         console.error("Lỗi:", err);
-        return res.status(500).json({ status: "ERR", message: err.message });
+      console.error("Lỗi:", err);
+      return res.status(500).json({ status: "ERR", message: err.message });
     }
 }
 
@@ -64,8 +64,6 @@ const getAllTemplate = async (req, res) =>{
       return res.status(500).json({ status: "ERR", message: err.message });
     }
 }
-
-
 
 const previewTemplateFields = async (req, res) => {
   try {
@@ -99,7 +97,6 @@ const createTemplate = async (req, res) => {
         message: "Thiếu thông tin bắt buộc (name, categoryId, file)",
       });
     }
-
     let parsedFields = fields;
     if (typeof fields === "string") {
       try {
@@ -185,8 +182,6 @@ const updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
     let { name, description, categoryId, urlCloud, fields, is_active } = req.body;
-
-    // Nếu gửi dạng FormData/multipart, parse chuỗi JSON của fields
     if (typeof fields === "string") {
       try {
         fields = JSON.parse(fields);
@@ -194,17 +189,7 @@ const updateTemplate = async (req, res) => {
         fields = [];
       }
     }
-
-    const payload = {
-      name,
-      description,
-      categoryId,
-      urlCloud,
-      fields,
-      is_active: is_active !== undefined ? is_active : undefined,
-    };
-
-    // Nếu có file upload từ multer
+    const payload = {name, description, categoryId, urlCloud, fields, is_active: is_active !== undefined ? is_active : undefined};
     if (req.file) {
       payload.fileBuffer = req.file.buffer;
       payload.fileName = req.file.originalname;

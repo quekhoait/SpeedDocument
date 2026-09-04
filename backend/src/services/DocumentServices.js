@@ -4,22 +4,19 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { PDFDocument, rgb } from "pdf-lib";
 import libre from "libreoffice-convert";
-import ImageModule from "docxtemplater-image-module-free";
-
 import sequelize from "../config.js";
 import { Template } from "../models/TemplateModel.js";
 import Document from "../models/DocumentModel.js";
 import { User } from "../models/AuthModel.js";
 import TemplateServices from "./TemplateServices.js";
-import AIServices from "./AIServices.js";
 import CloudServices from "./CloudServices.js";
 import { generateLocalVector } from "../utils/embedding.js";
 import PdfServices from "./PdfServices.js";
 import { v2 as cloudinary } from "cloudinary";
+import { analyzeDocumentRequest, generateDocument } from "../AIServices/documentService.js";
 
 const getTemplateByPrompt = async (prompt) => {
-  const analysis = await AIServices.analyzeDocumentRequest(prompt);
-  console.log("AI analysis:", analysis);
+  const analysis = await analyzeDocumentRequest(prompt);
 
   if (!analysis?.isDocumentRequest || !analysis?.documentType) {
     return {
@@ -45,7 +42,6 @@ const getTemplateByPrompt = async (prompt) => {
     replacements: { vectorString },
     order: [[distanceSql, "ASC"]],
   });
-  console.log("Found template:", template);
 
   if (!template) {
     return {
@@ -67,7 +63,6 @@ const getTemplateByPrompt = async (prompt) => {
     };
   }
 
-  // 6. Thành công
   return {
     status: "OK",
     templateId: template.id,
@@ -120,7 +115,7 @@ const createDocumentWithTemplate = async (templateId, prompt, userId = 1) => {
   const template = await Template.findByPk(templateId);
   if (!template) throw new Error("Template không tồn tại");
   const fields = await TemplateServices.getFieldByTemplateId(templateId);
-  const aiResult = await AIServices.generateDocument({
+  const aiResult = await generateDocument({
     prompt,
     fields,
     previousData: {},
@@ -159,7 +154,7 @@ const updateDocumentProgress = async (documentId, userId, prompt) => {
   const fields = await TemplateServices.getFieldByTemplateId(
     document.template_id,
   );
-  const aiResult = await AIServices.generateDocument({
+  const aiResult = await generateDocument({
     prompt,
     fields,
     previousData: document.extracted_data || {},
@@ -214,7 +209,6 @@ export const writeSignature = async (userId, documentId) => {
     throw new Error("Không tìm thấy Template hoặc file mẫu!");
   }
 
-  // 1. Chuẩn bị dữ liệu và gắn chuỗi marker vào chữ ký
   const templateResponse = await axios.get(template.file_path, {
     responseType: "arraybuffer",
   });
@@ -241,13 +235,11 @@ export const writeSignature = async (userId, documentId) => {
     compression: "DEFLATE",
   });
 
-  // 2. Chuyển đổi DOCX sang PDF
+
   const pdfBuffer = await convertAsync(filledDocxBuffer, ".pdf", undefined);
 
-  // 3. Quét tìm tọa độ tự động từ file PDF vừa tạo
   const coords = await PdfServices.findTextCoordinates(pdfBuffer, SIGN_MARKER);
 
-  // 4. Mở PDF bằng pdf-lib để xóa marker và đè ảnh chữ ký
   const pdfDoc = await PDFDocument.load(pdfBuffer);
 
   const signatureData =
@@ -271,7 +263,6 @@ export const writeSignature = async (userId, documentId) => {
       color: rgb(1, 1, 1),
     });
 
-    // Vẽ ảnh chữ ký lên vị trí vừa tìm được
     targetPage.drawImage(signatureImage, {
       x: coords.x,
       y: coords.y - 15,
@@ -280,7 +271,6 @@ export const writeSignature = async (userId, documentId) => {
     });
   }
 
-  // 5. Xuất và lưu trữ PDF
   const finalPdfBytes = await pdfDoc.save();
   const finalPdfBuffer = Buffer.from(finalPdfBytes);
 
@@ -313,7 +303,6 @@ const updateSignature = async (userId, documentId, signature) => {
       throw new Error("Không tìm thấy dữ liệu chữ ký (Base64)!");
     }
     let signatureData = null;
-
     if (signature) {
       const uploadResponse = await cloudinary.uploader.upload(signature, {
         folder: "signatures",

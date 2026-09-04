@@ -1,5 +1,5 @@
+import { refineDynamicTemplate } from "../AIServices/templateService.js";
 import Document from "../models/DocumentModel.js";
-import AICreateTemplateServices from "../services/AICreateTemplateServices.js";
 import DocumentServices from "../services/DocumentServices.js";
 import WordServices from "../services/WordServices.js";
 
@@ -7,20 +7,16 @@ export const processDocumentChat = async (req, res) => {
   try {
     const { documentId, templateId, prompt, type } = req.body;
     const userId = req.user?.id;
-
-    // TRƯỜNG HỢP 1: ĐANG TIẾP TỤC TRONG 1 SESSION ĐÃ CÓ DOCUMENT
+    //Tiếp tục khi có documentId
     if (documentId) {
       const currentDoc = await Document.findByPk(documentId);
       if (!currentDoc) {
         return res.status(404).json({ status: "ERR", message: "Không tìm thấy văn bản." });
       }
-
-      // ── GIAI ĐOẠN 1: CHỈNH SỬA MẪU (template_id === null) ──
       if (currentDoc.template_id === null) {
         const currentTpl = currentDoc.extracted_data?._templateDraft;
-
         // Gọi AI sửa lại bố cục mẫu
-        const updatedTpl = await AICreateTemplateServices.refineDynamicTemplate({
+        const updatedTpl = await refineDynamicTemplate({
           currentTemplate: currentTpl,
           feedbackPrompt: prompt,
         });
@@ -53,7 +49,7 @@ export const processDocumentChat = async (req, res) => {
         });
       }
 
-      // ── GIAI ĐOẠN 2: ĐIỀN THÔNG TIN (template_id !== null) ──
+      //Điền thông tin vào document hiện tại
       const result = await DocumentServices.updateDocumentProgress(
         documentId,
         userId,
@@ -65,7 +61,7 @@ export const processDocumentChat = async (req, res) => {
       });
     }
 
-    // TRƯỜNG HỢP 2: BẮT ĐẦU CHAT MỚI (CHƯA CÓ DOCUMENT_ID)
+    // Nếu không có documentId, tìm kiếm templateId từ prompt
     let targetTemplateId = templateId;
     if (!targetTemplateId) {
       const searchResult = await DocumentServices.getTemplateByPrompt(prompt.trim());
@@ -74,7 +70,7 @@ export const processDocumentChat = async (req, res) => {
         return res.status(422).json(searchResult);
       }
 
-      // KHÔNG CÓ MẪU SẴN -> TẠO DYNAMIC TEMPLATE VÀ BẬT PHASE DRAFTING
+      //gọi AI tạo template mới nếu không tìm thấy template phù hợp
       if (searchResult.status !== "OK") {
         const dynamicResult = await WordServices.createWithDynamicTemplate({
           prompt,
@@ -85,16 +81,15 @@ export const processDocumentChat = async (req, res) => {
           phase: "TEMPLATE_DRAFTING",
         });
       }
-
       targetTemplateId = searchResult.templateId;
     }
-
     const result = await DocumentServices.createDocumentWithTemplate(
       targetTemplateId,
       prompt,
       userId
     );
     return res.status(201).json({
+      status: "OK",
       ...result,
       phase: "FILLING_DATA",
     });
@@ -108,7 +103,6 @@ export const processDocumentChat = async (req, res) => {
 const getDocumentByUserId = async (req, res) => {
   try {
     const userId = req.user?.id;
-
     const documents = await DocumentServices.getDocumentByUserId(userId);
     return res.status(200).json({
       status: "OK",
@@ -123,7 +117,7 @@ const getDocumentByUserId = async (req, res) => {
 
 const writeSignature = async (req, res) => {
   try {
-    const { documentId, signature } = req.body;
+    const { documentId } = req.body;
     const userId = req.user?.id;
     if (!documentId) {
       return res.status(400).json({
@@ -131,9 +125,7 @@ const writeSignature = async (req, res) => {
         message: "Thiếu thông tin documentId cần ký!",
       });
     }
-
     const result = await DocumentServices.writeSignature(userId, documentId);
-
     return res.status(200).json({ status: "OK", result });
   } catch (error) {
     console.error("Lỗi ký văn bản:", error);
@@ -145,14 +137,12 @@ const updateDocument = async (req, res) => {
   try {
     const { documentId, signature } = req.body;
     const userId = req.user?.id;
-
     if (!documentId) {
       return res.status(400).json({
         status: "ERR",
         message: "Thiếu thông tin documentId cần ký!",
       });
     }
-
     const result = await DocumentServices.updateSignature(
       userId,
       documentId,

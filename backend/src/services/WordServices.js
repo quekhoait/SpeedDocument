@@ -13,8 +13,8 @@ import {
 import fs from "fs";
 import path from "path";
 import Document from "../models/DocumentModel.js";
-import AICreateTemplateServices from "./AICreateTemplateServices.js";
 import CloudServices from "./CloudServices.js";
+import { generateDynamicTemplate } from "../AIServices/templateService.js";
 
 export const createDocxFile = async ({ title, paragraphs = [], extractedData = {}, prefix = "template" }) => {
   // 1. Điền dữ liệu vào các placeholder trong nội dung chính
@@ -169,7 +169,6 @@ export const createDocxFile = async ({ title, paragraphs = [], extractedData = {
 
  const docBuffer = await Packer.toBuffer(doc);
 
-  // 5. Upload lên Cloudinary thông qua CloudServices
   const fileName = `${prefix}_${Date.now()}.docx`;
   const cloudResult = await CloudServices.uploadToCloudinary(docBuffer, fileName);
   const cloudUrl = cloudResult.secure_url;
@@ -179,7 +178,7 @@ export const createDocxFile = async ({ title, paragraphs = [], extractedData = {
 
 export const createWithDynamicTemplate = async ({ prompt, userId }) => {
   // 1. Gọi AI sinh template
-  const dynamicTpl = await AICreateTemplateServices.generateDynamicTemplate(prompt);
+  const dynamicTpl = await generateDynamicTemplate(prompt);
 
   const { cloudUrl } = await createDocxFile({
     title: dynamicTpl.templateTitle,
