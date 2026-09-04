@@ -101,13 +101,10 @@ const getFieldTemplate = async (fileInput) => {
   if (!fileInput) {
     throw new Error("Không có file để đọc");
   }
-  let result;
-  // const result = Buffer.isBuffer(fileInput)
-  //   ? await mammoth.extractRawText({ buffer: fileInput })
-  //   : await mammoth.extractRawText({ path: fileInput });
-  if(Buffer.isBuffer(fileInput)){
-    result = await mammoth.extractRawText({path: fileInput})
-  }
+  const result = Buffer.isBuffer(fileInput)
+    ? await mammoth.extractRawText({ buffer: fileInput })
+    : await mammoth.extractRawText({ path: fileInput });
+
   const textContent = result.value || "";
   const regex = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
   const fields = new Set();

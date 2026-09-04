@@ -131,9 +131,9 @@ export default function TemplatePage() {
       setExtractedFields([]);
       return;
     }
-
     setExtracting(true);
     try {
+      console.log('Uploading file for preview:', rawFile);
       const res = await services.previewTemplate(rawFile);
       const fields = res?.data?.data || [];
       setExtractedFields(fields);

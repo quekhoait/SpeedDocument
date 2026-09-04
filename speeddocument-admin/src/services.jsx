@@ -62,8 +62,7 @@ export const services = {
 
   previewTemplate: async (file) => {
     const formData = new FormData();
-    const rawFile = file.originFileObj || file;
-    formData.append("file", rawFile);
+    formData.append("file", file);
     return await authApis().post(endpoints.preview, formData, {
       headers: {
         "Content-Type": "multipart/form-data",

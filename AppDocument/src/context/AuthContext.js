@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }) => {
           throw new Error("Không tìm thấy refresh token");
         }
         const refreshResponse = authService.refreshToken(refreshToken)
-        console.log("refreshResponse", refreshResponse)
         const newAccessToken = refreshResponse.data?.data?.access_token;
         const newRefreshToken = refreshResponse.data?.data?.refresh_token;
 
@@ -41,7 +40,6 @@ export const AuthProvider = ({ children }) => {
           const retryResponse =authService.currentUser(newAccessToken)
           const userData = retryResponse.data?.data || retryResponse.data;
           setCurrentUser(userData);
-          console.log("Lấy thông tin user thành công bằng token mới!");
         } else {
           throw new Error("Dữ liệu trả về từ API Refresh không hợp lệ");
         }
