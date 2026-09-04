@@ -150,7 +150,6 @@ const DraftScreen = () => {
     try {
       const token = await getToken();
 
-      console.log(dynamicTemplateData)
 
       const payload = {
         documentId: documentId,

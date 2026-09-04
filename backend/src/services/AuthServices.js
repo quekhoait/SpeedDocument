@@ -155,8 +155,8 @@ const getRefreshToken = async (token) => {
   return await RefreshToken.findOne({ where: { refreshToken: token } });
 };
 
-const logoutUser = async (userId) => {
-  return await RefreshToken.destroy({ where: { userId } });
+const logoutUser = async (refreshToken) => {
+  return await RefreshToken.destroy({ where: { refreshToken: refreshToken } });
 };
 
 const saveSignature = async (userId, signature) => {

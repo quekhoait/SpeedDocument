@@ -13,7 +13,7 @@ export const generateDynamicTemplate = async (prompt) => {
 Nhiệm vụ:
 1. Tạo một MẪU VĂN BẢN chuẩn có chứa các placeholder dạng {{field_key}} (viết thường, snake_case, không dấu, ví dụ: {{ho_ten}}, {{so_cccd}}, {{ngay_sinh}}).
 2. 'name': Tên ngắn gọn chuẩn của mẫu văn bản (ví dụ: Đơn xin xác nhận tạm trú, Giấy ủy quyền).
-3. 'description': 1-2 câu tóm tắt mục đích sử dụng và cơ quan tiếp nhận (dùng để hiển thị và tìm kiếm ngữ nghĩa).
+3. 'description': viết 1 đoạn tóm tắt mục đích sử dụng và cơ quan tiếp nhận (dùng để hiển thị và tìm kiếm ngữ nghĩa).
 4. 'paragraphs': Mảng các dòng văn bản đã định dạng chuẩn (chỉ chứa Kính gửi, nội dung chính, lý do, cam đoan; KHÔNG chứa Quốc hiệu, Tiêu ngữ, Ngày tháng và Chữ ký vì hệ thống tự chèn).
 5. 'fields': Danh sách các trường cần thu thập cho bảng TemplateField:
    - field_key: Tên biến (khớp với {{field_key}} trong paragraphs).

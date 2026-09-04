@@ -168,8 +168,9 @@ const getTemplateById = async (id) => {
 
 const createTemplate = async (data) => {
   const {name, description, categoryId, fileBuffer, fileName, fields = [], documentId, urlCloud, userId } = data;
+  console.log("Creating template with data:", data);
   let file_path = urlCloud;
-  if (!fileBuffer || !file_path) {
+  if (!fileBuffer && !file_path) {
       throw new Error("Thiếu fileBuffer hoặc urlCloud để tạo template.");
     }
   if (!file_path) {

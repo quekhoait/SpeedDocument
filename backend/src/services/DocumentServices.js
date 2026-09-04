@@ -45,6 +45,7 @@ const getTemplateByPrompt = async (prompt) => {
     replacements: { vectorString },
     order: [[distanceSql, "ASC"]],
   });
+  console.log("Found template:", template);
 
   if (!template) {
     return {
@@ -54,7 +55,8 @@ const getTemplateByPrompt = async (prompt) => {
   }
 
   const distance = Number(template.get("distance"));
-  const MAX_DISTANCE = 0.35; // Ngưỡng Cosine Distance (Càng nhỏ càng giống)
+  console.log("Distance to template:", distance);
+  const MAX_DISTANCE = 0.27; 
 
   if (distance > MAX_DISTANCE) {
     return {

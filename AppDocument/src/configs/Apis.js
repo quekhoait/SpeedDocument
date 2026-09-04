@@ -6,7 +6,7 @@ export const endpoints = {
     'email_login': '/auth/login',
     'get_user': '/auth/user',
     'refresh_token': '/auth/refresh-token',
-    'log_out': '/auth/log_out',
+    'log_out': '/auth/logout',
     'save_signature': '/auth/save-signature',
     'update': '/auth/update',
     'google_login': '/auth/google/url',

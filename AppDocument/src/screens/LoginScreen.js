@@ -92,7 +92,6 @@ const handleGoogleLogin = async () => {
         password: password,
       };
       const response = await authService.loginWithEmail(loginPayload);
-      console.log(response);
       if (response) {
         const { accessToken, refreshToken } = response.data;
 

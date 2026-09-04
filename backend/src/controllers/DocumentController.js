@@ -89,7 +89,6 @@ export const processDocumentChat = async (req, res) => {
       targetTemplateId = searchResult.templateId;
     }
 
-    // CÓ MẪU SẴN TRONG DB -> VÀO THẲNG PHASE ĐIỀN THÔNG TIN
     const result = await DocumentServices.createDocumentWithTemplate(
       targetTemplateId,
       prompt,

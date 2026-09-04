@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,6 +16,7 @@ import { authService } from "../services/authServices";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ProfileScreen = () => {
+  const navigate = useNavigation();
   const { currentUser, setCurrentUser } = useContext(AuthContext);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,21 +33,31 @@ const ProfileScreen = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleLogout = async () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Đăng xuất",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.removeItem("access_token");
-          await AsyncStorage.removeItem("refresh_token");
+  const handleLogout = () => {
+  Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+    { text: "Hủy", style: "cancel" },
+    {
+      text: "Đăng xuất",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          const token = await AsyncStorage.getItem("access_token");
+          if (token) {
+            await authService.logout(token);
+          }
+          await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
           setCurrentUser(null);
-          await authService.logout();
-        },
+          navigate.reset({
+            index: 0,
+            routes: [{ name: "login" }],
+          });
+        } catch (error) {
+          console.error("Lỗi khi đăng xuất:", error);
+        }
       },
-    ]);
-  };
+    },
+  ]);
+};
 
   const handleChooseAvatar = () => {
     if (!isEditing) return;

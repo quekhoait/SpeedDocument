@@ -37,13 +37,14 @@ const CreateDocumentScreen = () => {
     return await AsyncStorage.getItem("access_token");
   };
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = async () => {
     try {
       setLoading(true);
       const token = await getToken();
       
       if (!token) {
         Alert.alert("Lỗi", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        navigate.navigate('login');
         return;
       }
 
@@ -56,11 +57,11 @@ const CreateDocumentScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+  }, []);
 
   const loadSignature = async (documentId) => {
     try {
@@ -155,16 +156,17 @@ const CreateDocumentScreen = () => {
     }
   };
 
-  console.log(documents)
 
   return (
     <Base headerTitle="AI Document" activeTab={1} hasHeader={true} hasNav={true}>
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 40,
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        flexGrow: 1,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 124,
         }}
       >
         <View className="flex-row items-center justify-between mb-6">
@@ -172,7 +174,7 @@ const CreateDocumentScreen = () => {
             <Text>
               <Text className="text-gray-500 text-xl">Chào, </Text>
               <Text className="text-2xl font-bold text-gray-900">
-                {currentUser?.fullname || currentUser?.name || "Người dùng"}
+                {currentUser?.username}
               </Text>
             </Text>
           </View>
