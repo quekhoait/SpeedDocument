@@ -7,13 +7,10 @@ import {
   TemplateFieldMapping,
 } from "../models/TemplateModel.js";
 import { generateLocalVector } from "../utils/embedding.js";
-import PizZip from "pizzip";
-import Docxtemplater from "docxtemplater";
-import InspectModule from "docxtemplater/js/inspect-module.js";
 import CloudServices from "./CloudServices.js";
 import { Op } from "sequelize";
 import Document from "../models/DocumentModel.js";
-import { User } from "../models/AuthModel.js";
+
 
 const createCategoryTemplate = async (data) => {
   const { name, description } = data;
@@ -165,7 +162,6 @@ const getTemplateById = async (id) => {
 
 const createTemplate = async (data) => {
   const {name, description, categoryId, fileBuffer, fileName, fields = [], documentId, urlCloud, userId } = data;
-  console.log("Creating template with data:", data);
   let file_path = urlCloud;
   if (!fileBuffer && !file_path) {
       throw new Error("Thiếu fileBuffer hoặc urlCloud để tạo template.");
@@ -173,6 +169,16 @@ const createTemplate = async (data) => {
   if (!file_path) {
     const cloudResult = await CloudServices.uploadToCloudinary(fileBuffer, fileName);
     file_path = cloudResult.secure_url;
+  }
+
+  const existingTemplate = await Template.findOne({
+    where: {
+      name: name,
+      template_category_id: categoryId,
+    },
+  });
+  if (existingTemplate) {
+    throw new Error(`Template với tên "${name}" đã tồn tại trong danh mục này.`);
   }
 
   const t = await sequelize.transaction();  
@@ -239,7 +245,7 @@ const updateField = async (data) => {
       message: "Không tìm thấy trường dữ liệu (Field) này",
     };
   }
-  if (field_key == field.field_key && field_label == field.field_label && field_type == field.field_type) {
+  if (field_key === field.field_key && field_label === field.field_label && field_type === field.field_type) {
     return {
       status: "ERR",
       message: "Bạn chưa thay đổi gì cả!!",
@@ -309,7 +315,6 @@ const updateTemplate = async (templateId, data) => {
   if (!template) {
     throw new Error(`Template with id ${templateId} not found`);
   }
-  //  Xử lý file (ưu tiên urlCloud -> fileBuffer -> giữ nguyên file cũ)
   let file_path = template.file_path;
   if (urlCloud) {
     file_path = urlCloud;
@@ -320,6 +325,15 @@ const updateTemplate = async (templateId, data) => {
   const t = await sequelize.transaction();
   try {
     const newName = name || template.name;
+    const existingTemplate = await Template.findOne({
+    where: {
+      name: newName,
+      template_category_id: categoryId,
+    },
+  });
+  if (existingTemplate) {
+    throw new Error(`Template với tên "${newName}" đã tồn tại trong danh mục này.`);
+  }
     const newDesc = description || template.description;    
     let vectorData = template.template_vector;
     if (name || description) {
@@ -339,20 +353,15 @@ const updateTemplate = async (templateId, data) => {
       { transaction: t }
     );
 
-    // Bước 3: Cập nhật Field và làm mới Field Mapping
     if (fields.length > 0) {
-      // 3.1. Lọc bỏ các field bị trùng key trong danh sách truyền lên
       const uniqueFields = Array.from(
         new Map(fields.map((f) => [f.field_key, f])).values()
       );
-
-      // 3.2. Xóa các mapping cũ của template
       await TemplateFieldMapping.destroy({
         where: { template_id: templateId },
         transaction: t,
       });
 
-      // 3.3. Duyệt danh sách field: cập nhật (nếu có) hoặc tạo mới
       for (const item of uniqueFields) {
         let fieldObj = await TemplateField.findOne({
           where: { field_key: item.field_key },
@@ -360,7 +369,6 @@ const updateTemplate = async (templateId, data) => {
         });
 
         if (fieldObj) {
-          // Field đã tồn tại -> cập nhật label/type nếu người dùng sửa
           await fieldObj.update(
             {
               field_label: item.field_label || fieldObj.field_label,
@@ -369,7 +377,6 @@ const updateTemplate = async (templateId, data) => {
             { transaction: t }
           );
         } else {
-          // Field chưa có -> tạo mới
           fieldObj = await TemplateField.create(
             {
               field_key: item.field_key,
@@ -379,8 +386,6 @@ const updateTemplate = async (templateId, data) => {
             { transaction: t }
           );
         }
-
-        // 3.4. Tạo mapping mới cho template
         await TemplateFieldMapping.create(
           {
             template_id: template.id,

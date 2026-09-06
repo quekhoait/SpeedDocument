@@ -144,7 +144,7 @@ const createUser = async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ status: "ERR", message: "Missing required fields" });
+        .json({ status: "ERR", message: "Dữ liệu không hợp lệ" });
     }
 
     if (password !== confirm_password) {

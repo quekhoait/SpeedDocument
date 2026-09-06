@@ -95,14 +95,12 @@ const createUser = async (userData) => {
   }
   const saltRounds = 10;
   const hashedPassword = bcrypt.hashSync(password, saltRounds);
-
   const newUser = await User.create({
     username,
     password: hashedPassword,
     email: cleanEmail,
     role: 'user'
   });
-
   await AuthMethod.create({
     user_id: newUser.id,
     provider: 'local',
@@ -115,18 +113,14 @@ const loginUser = async (loginData) => {
   const { email, password } = loginData;
   const cleanEmail = email ? email.trim().toLowerCase() : "";
   const user = await User.findOne({ where: { email: cleanEmail } });
-  if (!user) {
+  if (!user) { 
     return {
       status: "ERR",
       message: "Email hoặc mật khẩu không đúng",
     };
   }
   let checkPassword = false;
-  try {
-    checkPassword = bcrypt.compareSync(password, user.password);
-  } catch (e) {
-    checkPassword = password === user.password;
-  }
+  checkPassword = bcrypt.compareSync(password, user.password);
   if (!checkPassword) {
     return {
       status: "ERR",

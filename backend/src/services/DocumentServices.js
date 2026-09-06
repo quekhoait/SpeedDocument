@@ -15,25 +15,76 @@ import PdfServices from "./PdfServices.js";
 import { v2 as cloudinary } from "cloudinary";
 import { analyzeDocumentRequest, generateDocument } from "../AIServices/documentService.js";
 
-const getTemplateByPrompt = async (prompt) => {
-  const analysis = await analyzeDocumentRequest(prompt);
+import crypto from "crypto";
+import redisClient from "../utils/redis.js";
 
+
+// Lưu cache tìm kiếm
+const SEARCH_CACHE_TTL = 24 * 60 * 60;
+// Lưu cache thông tin template
+const TEMPLATE_CACHE_TTL = 7 * 24 * 60 * 60;
+const PROMPT_SESSION_TTL = 15 * 60;
+
+const addPromptToSession = async (userId, prompt) => {
+  const sessionKey = `session:prompt:${userId}`;
+  const existingData = await redisClient.get(sessionKey);  
+  let combinedPrompt = prompt;
+  if (existingData) {
+    try {
+      const parsed = JSON.parse(existingData);
+      combinedPrompt = `${parsed.prompt}\n${prompt}`;
+    } catch {
+      combinedPrompt = prompt;
+    }
+  }
+  await redisClient.set(sessionKey, JSON.stringify({ prompt: combinedPrompt }), {
+    EX: PROMPT_SESSION_TTL,
+  });
+};
+
+const getPromptFromSession = async (userId) => {
+  const sessionKey = `session:prompt:${userId}`;
+  const sessionData = await redisClient.get(sessionKey);
+  if (sessionData) {
+    return JSON.parse(sessionData).prompt;
+  }
+  return null;
+};
+
+
+const getTemplateByPrompt = async (userId, prompt) => {
+  const analysis = await analyzeDocumentRequest(prompt);
   if (!analysis?.isDocumentRequest || !analysis?.documentType) {
+    await addPromptToSession(userId, prompt);
     return {
       status: "NEED_DOCUMENT_TYPE",
       message: "Tôi chưa xác định được loại văn bản bạn muốn tạo. Vui lòng mô tả rõ hơn.",
     };
   }
 
-  const queryToEmbed = analysis.searchText 
-    ? `${analysis.documentType}: ${analysis.searchText}` 
+  const queryToEmbed = analysis.searchText
+    ? `${analysis.documentType}: ${analysis.searchText}`
     : analysis.documentType;
+
+  const normalizedQuery = queryToEmbed.trim().toLowerCase();
+  const searchHash = crypto.createHash("sha256").update(normalizedQuery).digest("hex");
+  const searchCacheKey = `cache:search_vector:${searchHash}`;
+  
+  try {
+    if (redisClient?.isOpen) {
+      const cachedSearchResult = await redisClient.get(searchCacheKey);
+      if (cachedSearchResult) {
+        return JSON.parse(cachedSearchResult);
+      }
+    }
+  } catch (err) {
+    console.warn("Redis get error:", err.message);
+  }
 
   const embedding = await generateLocalVector(queryToEmbed);
   const vectorString = `[${embedding.join(",")}]`;
-
   const distanceSql = sequelize.literal(`template_vector <=> CAST(:vectorString AS vector)`);
-
+  
   const template = await Template.findOne({
     where: { is_active: true },
     attributes: {
@@ -51,8 +102,7 @@ const getTemplateByPrompt = async (prompt) => {
   }
 
   const distance = Number(template.get("distance"));
-  console.log("Distance to template:", distance);
-  const MAX_DISTANCE = 0.27; 
+  const MAX_DISTANCE = 0.27;
 
   if (distance > MAX_DISTANCE) {
     return {
@@ -63,7 +113,7 @@ const getTemplateByPrompt = async (prompt) => {
     };
   }
 
-  return {
+  const finalResult = {
     status: "OK",
     templateId: template.id,
     templateTitle: template.title,
@@ -71,9 +121,23 @@ const getTemplateByPrompt = async (prompt) => {
     distance,
     confidence: analysis.confidence,
   };
+
+  try {
+    if (redisClient?.isOpen) {
+      await redisClient.set(searchCacheKey, JSON.stringify(finalResult), {
+        EX: SEARCH_CACHE_TTL,
+      });
+      const templateCacheKey = `cache:template_detail:${template.id}`;
+      await redisClient.set(templateCacheKey, JSON.stringify(template.toJSON()), {
+        EX: TEMPLATE_CACHE_TTL,
+      });
+    }
+  } catch (err) {
+    console.warn("Redis set error:", err.message);
+  }
+
+  return finalResult;
 };
-
-
 
 const fillAndUploadTemplate = async (templateId, extractedData = {}) => {
   const template = await Template.findByPk(templateId);
@@ -112,11 +176,14 @@ const fillAndUploadTemplate = async (templateId, extractedData = {}) => {
 };
 
 const createDocumentWithTemplate = async (templateId, prompt, userId = 1) => {
+   const savedPrompt = await getPromptFromSession(userId);
+   const fullPrompt = savedPrompt ? `${savedPrompt}\n${prompt}` : prompt;
+   console.log("Full prompt for template creation:", fullPrompt);
   const template = await Template.findByPk(templateId);
   if (!template) throw new Error("Template không tồn tại");
   const fields = await TemplateServices.getFieldByTemplateId(templateId);
   const aiResult = await generateDocument({
-    prompt,
+    prompt: fullPrompt,
     fields,
     previousData: {},
   });
@@ -370,13 +437,9 @@ const getAllDocument = async ()=> {
 export default {
   getDocumentById,
   createDocumentWithTemplate,
-
   updateDocumentProgress,
-
   getTemplateByPrompt,
-
   fillAndUploadTemplate,
-
   getDocumentByUserId,
   writeSignature,
   updateSignature,

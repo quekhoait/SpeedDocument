@@ -10,9 +10,6 @@ const findTextCoordinates = async(pdfBuffer, searchText) => {
 
     for (const item of textContent.items) {
       if (item.str && item.str.includes(searchText)) {
-        // Trong hệ tọa độ PDF:
-        // item.transform[4] là tọa độ X
-        // item.transform[5] là tọa độ Y (tính từ đáy trang đi lên)
         return {
           pageIndex: pageNum - 1,
           x: item.transform[4],
@@ -22,7 +19,7 @@ const findTextCoordinates = async(pdfBuffer, searchText) => {
     }
   }
 
-  return null; // Không tìm thấy marker
+  return null; 
 }
 
 

@@ -39,7 +39,6 @@ export const generateDocument = async ({ prompt, fields, previousData = {} }) =>
       description: field.field_label,
     };
   });
-
   const systemPrompt = `Bạn là AI hỗ trợ tạo văn bản hành chính.
 Nhiệm vụ:
 1. Đọc nội dung nhập từ người dùng kết hợp với dữ liệu đã trích xuất từ các lượt chat trước.

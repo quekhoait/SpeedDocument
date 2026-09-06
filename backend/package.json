@@ -30,7 +30,9 @@
     "pg-hstore": "^2.3.4",
     "pgvector": "^0.3.0",
     "pizzip": "^3.2.0",
+    "redis": "^6.2.1",
     "sequelize": "^6.37.8",
+    "socket.io": "^4.8.3",
     "streamifier": "^0.1.1"
   },
   "name": "speeddocument",
@@ -38,12 +40,14 @@
   "description": "",
   "main": "app.js",
   "devDependencies": {
+    "jest": "^30.5.1",
     "nodemon": "^3.1.14"
   },
   "scripts": {
     "start": "nodemon src/app.js",
     "dev": "nodemon src/app.js",
-    "test": "jest --watchAll --verbose"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "repository": {
     "type": "git",

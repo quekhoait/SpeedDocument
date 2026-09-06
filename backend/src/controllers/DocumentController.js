@@ -5,9 +5,8 @@ import WordServices from "../services/WordServices.js";
 
 export const processDocumentChat = async (req, res) => {
   try {
-    const { documentId, templateId, prompt, type } = req.body;
+    const { documentId, templateId, prompt} = req.body;
     const userId = req.user?.id;
-    //Tiếp tục khi có documentId
     if (documentId) {
       const currentDoc = await Document.findByPk(documentId);
       if (!currentDoc) {
@@ -15,13 +14,11 @@ export const processDocumentChat = async (req, res) => {
       }
       if (currentDoc.template_id === null) {
         const currentTpl = currentDoc.extracted_data?._templateDraft;
-        // Gọi AI sửa lại bố cục mẫu
         const updatedTpl = await refineDynamicTemplate({
           currentTemplate: currentTpl,
           feedbackPrompt: prompt,
         });
 
-        // Tạo file docx xem trước mới
         const fileName = `preview_${currentDoc.id}_${Date.now()}.docx`;
         const { cloudUrl } = await WordServices.createDocxFile({
           title: updatedTpl.name,
@@ -30,7 +27,6 @@ export const processDocumentChat = async (req, res) => {
           fileName,
         });
 
-        // Cập nhật lại bản nháp trong Document
         currentDoc.extracted_data = {
           ...currentDoc.extracted_data,
           _templateDraft: updatedTpl,
@@ -49,7 +45,6 @@ export const processDocumentChat = async (req, res) => {
         });
       }
 
-      //Điền thông tin vào document hiện tại
       const result = await DocumentServices.updateDocumentProgress(
         documentId,
         userId,
@@ -61,10 +56,9 @@ export const processDocumentChat = async (req, res) => {
       });
     }
 
-    // Nếu không có documentId, tìm kiếm templateId từ prompt
     let targetTemplateId = templateId;
     if (!targetTemplateId) {
-      const searchResult = await DocumentServices.getTemplateByPrompt(prompt.trim());
+      const searchResult = await DocumentServices.getTemplateByPrompt(userId, prompt.trim());
 
       if (searchResult.status === "NEED_DOCUMENT_TYPE") {
         return res.status(422).json(searchResult);
