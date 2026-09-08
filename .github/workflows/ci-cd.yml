@@ -1,0 +1,57 @@
+name: SpeedDocument CI/CD
+
+# Định nghĩa thời điểm workflow này tự động chạy
+on:
+  push:
+    branches: [ "main", "master" ] # Chạy khi bạn push code lên nhánh main hoặc master
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # Job 1: Kiểm tra và Build Backend (Node.js / Express)
+  backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend # Trỏ vào thư mục backend của bạn
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Build / Test (nếu có script build)
+        run: npm run build --if-present
+
+  # Job 2: Kiểm tra và Build Admin (ReactJS)
+  admin-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./speeddocument-admin # Trỏ vào thư mục admin của bạn
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: speeddocument-admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React Admin
+        run: npm run build
