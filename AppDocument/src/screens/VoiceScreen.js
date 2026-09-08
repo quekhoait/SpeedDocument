@@ -134,7 +134,6 @@ const VoiceAIScreen = () => {
       setIsProcessing(true);
       await audioRecorder.stop();
 
-      // Giải phóng chế độ ghi âm ngay sau khi dừng để sẵn sàng phát qua loa ngoài
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
 
       if (!audioRecorder.uri) throw new Error("File ghi âm không tồn tại.");

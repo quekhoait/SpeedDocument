@@ -23,8 +23,6 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
 
-// 1. Lưu tin nhắn
-// Cập nhật hàm save trong FireBaseServices.js theo đúng schema trên ảnh
 export const saveChatMessage = async (sessionId, senderType, content, missingFields=[]) => {
   if (!sessionId || !content) return;
   try {
@@ -65,7 +63,6 @@ export const subscribeChatMessages = (sessionId, callback) => {
         };
       });
 
-      // Sắp xếp tin nhắn theo thời gian tăng dần
       messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       callback(messages);
     },

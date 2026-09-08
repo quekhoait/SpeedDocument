@@ -178,7 +178,6 @@ const fillAndUploadTemplate = async (templateId, extractedData = {}) => {
 const createDocumentWithTemplate = async (templateId, prompt, userId = 1) => {
    const savedPrompt = await getPromptFromSession(userId);
    const fullPrompt = savedPrompt ? `${savedPrompt}\n${prompt}` : prompt;
-   console.log("Full prompt for template creation:", fullPrompt);
   const template = await Template.findByPk(templateId);
   if (!template) throw new Error("Template không tồn tại");
   const fields = await TemplateServices.getFieldByTemplateId(templateId);

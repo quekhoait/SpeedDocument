@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Checkbox, Card, Row, Col, Space, message, Divider, Alert } from 'antd';
-import { UserOutlined, LockOutlined, GoogleOutlined, GithubOutlined } from '@ant-design/icons';
+import  { useState } from 'react';
+import { Form, Input, Button, Card, Row, Col, message, } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { services } from '../services';
 
@@ -37,13 +37,13 @@ export default function Login() {
  
   return (
     <div className="relative w-full min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-purple-700 overflow-hidden flex items-center justify-center">
-      {/* Background Decorative Elements */}
+
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/5 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 right-1/5 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Login Container */}
+
       <Row className="relative z-10 w-full" align="middle" justify="center" style={{ minHeight: '100vh' }}>
         <Col xs={22} sm={20} md={12} lg={8}>
           <Card
@@ -54,7 +54,7 @@ export default function Login() {
               padding: '40px',
             }}
           >
-            {/* Logo Section */}
+
             <div className="text-center mb-8">
               <div className="mb-4 text-6xl animate-bounce">📄</div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -63,7 +63,6 @@ export default function Login() {
               <p className="text-gray-500 text-sm mt-2">Quản lý tài liệu chuyên nghiệp</p>
             </div>
 
-            {/* Login Form */}
             <Form
               form={form}
               layout="vertical"
