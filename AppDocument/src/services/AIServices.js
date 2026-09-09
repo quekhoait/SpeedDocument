@@ -2,7 +2,6 @@ import { createAudioPlayer, AudioModule } from "expo-audio";
 
 let activePlayer = null;
 
-// Hàm an toàn bật loa ngoài và hủy cờ recording
 const ensurePlaybackMode = async () => {
   try {
     if (AudioModule && typeof AudioModule.setAudioModeAsync === "function") {

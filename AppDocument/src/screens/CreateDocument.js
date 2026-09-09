@@ -7,12 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import {
-  FileText,
-  Mic,
-  PenTool,
-  ArrowRight,
-} from "lucide-react-native";
+import { FileText, Mic, PenTool, ArrowRight } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 
@@ -21,12 +16,12 @@ import ButtonComponent from "../components/ButtonComponent";
 import SignatureModal from "../components/SignatureModel";
 import { authService } from "../services/authServices";
 import { AuthContext } from "../context/AuthContext";
-import {documentServices} from "../services/documentServices";
+import { documentServices } from "../services/documentServices";
 
 const CreateDocumentScreen = () => {
   const navigation = useNavigation();
   const { currentUser } = useContext(AuthContext);
-  
+
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -41,10 +36,13 @@ const CreateDocumentScreen = () => {
     try {
       setLoading(true);
       const token = await getToken();
-      
+
       if (!token) {
-        Alert.alert("Lỗi", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        navigate.navigate('login');
+        Alert.alert(
+          "Lỗi",
+          "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        );
+        navigate.navigate("login");
         return;
       }
 
@@ -84,9 +82,7 @@ const CreateDocumentScreen = () => {
       return;
     }
 
-    const previewUrl = `https://docs.google.com/gview?url=${encodeURIComponent(item.file_path)}&embedded=true`;
-
-
+    const previewUrl = `https://docs.google.com/gview?url=${(item.file_path)}&embedded=true`;
     navigation.navigate("preview", {
       previewUrl: previewUrl,
       title: "Xem trước tài liệu",
@@ -94,13 +90,13 @@ const CreateDocumentScreen = () => {
   };
 
   const handleOpenSignature = (item) => {
-    setSelectedDoc(item); 
+    setSelectedDoc(item);
     const savedSig = currentUser?.signature;
 
     if (savedSig) {
       Alert.alert(
         "Chọn hình thức ký",
-        `Bạn muốn ký tài liệu "${item.name || item.title || 'này'}" bằng hình thức nào?`,
+        `Bạn muốn ký tài liệu "${item.name || item.title || "này"}" bằng hình thức nào?`,
         [
           {
             text: "Hủy",
@@ -115,7 +111,7 @@ const CreateDocumentScreen = () => {
             text: "Dùng chữ ký có sẵn",
             onPress: () => handleSaveSignatureAvailble(item.id),
           },
-        ]
+        ],
       );
     } else {
       setModalVisible(true);
@@ -137,7 +133,7 @@ const CreateDocumentScreen = () => {
       const token = await getToken();
       const response = await documentServices.updateSignatureUser(
         token,
-        targetDocId
+        targetDocId,
       );
       const resData = response?.data;
       await loadSignature(targetDocId);
@@ -158,15 +154,20 @@ const CreateDocumentScreen = () => {
 
 
   return (
-    <Base headerTitle="AI Document" activeTab={1} hasHeader={true} hasNav={true}>
+    <Base
+      headerTitle="AI Document"
+      activeTab={1}
+      hasHeader={true}
+      hasNav={true}
+    >
       <ScrollView
-      style={{ flex: 1 }}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{
-        flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 124,
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 124,
         }}
       >
         <View className="flex-row items-center justify-between mb-6">
@@ -182,7 +183,9 @@ const CreateDocumentScreen = () => {
 
         <View className="flex-row gap-2 mb-4">
           <TouchableOpacity
-            onPress={() => navigation.navigate("draft", { documentId: null, template: null })}
+            onPress={() =>
+              navigation.navigate("draft", { documentId: null, template: null })
+            }
             className="flex-1 bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-sm"
           >
             <View className="w-10 h-10 bg-slate-200/60 rounded-xl items-center justify-center mb-3">
@@ -248,7 +251,6 @@ const CreateDocumentScreen = () => {
         ) : documents.length > 0 ? (
           <View className="space-y-3">
             {documents.map((item) => (
-              
               <TouchableOpacity
                 key={item.id?.toString()}
                 onPress={() => handleMyDocument(item)}
@@ -260,7 +262,7 @@ const CreateDocumentScreen = () => {
                     className="text-base font-bold text-gray-900"
                     numberOfLines={1}
                   >
-                    {item.name || item.title || `Văn bản #${item.id}`}
+                    {item?.template?.name || "Đơn đang tạo"}
                   </Text>
                   <Text className="text-xs text-gray-500 mt-1">
                     Ngày tạo:{" "}
@@ -271,21 +273,38 @@ const CreateDocumentScreen = () => {
                 </View>
 
                 {!item.signature && item.status && (
-                  <View>
+                  <View className="flex-row items-center gap-2">
+                    <ButtonComponent
+                      title="Chỉnh sửa"
+                      className="px-2.5 py-1 rounded-full text-[11px]"
+                      onPress={() =>
+                        navigation.navigate("draft", {
+                          documentId: item.id,
+                          sessionId: item.sessionId,
+                          template: item.template,
+                        })
+                      }
+                    />
                     <ButtonComponent
                       title="Ký tên"
-                      className="px-3 py-1.5 rounded-full text-xs"
+                      className="px-2.5 py-1 rounded-full text-[11px]"
                       onPress={() => handleOpenSignature(item)}
                     />
                   </View>
                 )}
 
-                 {!item.signature && !item.status && (
+                {!item.signature && !item.status && (
                   <View>
                     <ButtonComponent
                       title="Tiếp tục"
                       className="px-3 py-1.5 rounded-full text-xs"
-                      onPress={() => navigation.navigate("draft", { documentId: item.id, sessionId: item.sessionId, template: item.template})}
+                      onPress={() =>
+                        navigation.navigate("draft", {
+                          documentId: item.id,
+                          sessionId: item.sessionId,
+                          template: item.template,
+                        })
+                      }
                     />
                   </View>
                 )}

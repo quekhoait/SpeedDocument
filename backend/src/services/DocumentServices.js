@@ -257,6 +257,13 @@ const getDocumentByUserId = async (userId) => {
     where: {
       user_id: userId,
     },
+    include: [
+      {
+        model: Template,
+        as: "template", 
+        attributes: ["name"],
+      },
+    ],
     order: [["createdAt", "DESC"]],
   });
   return documents;

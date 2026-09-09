@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend # Trỏ vào thư mục backend của bạn
+        working-directory: ./backend
 
     steps:
       - name: Checkout code
@@ -32,7 +32,6 @@ jobs:
       - name: Run Build / Test (nếu có script build)
         run: npm run build --if-present
 
-  # Job 2: Kiểm tra và Build Admin (ReactJS)
   admin-ci:
     runs-on: ubuntu-latest
     defaults:

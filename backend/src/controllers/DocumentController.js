@@ -23,8 +23,10 @@ export const processDocumentChat = async (req, res) => {
         const { cloudUrl } = await WordServices.createDocxFile({
           title: updatedTpl.name,
           paragraphs: updatedTpl.paragraphs,
-          extractedData: {},
-          fileName,
+          extractedData: updatedTpl.extractedData || {},
+          signature: updatedTpl.signature,
+          signatures: updatedTpl.signatures,
+          prefix: "preview",
         });
 
         currentDoc.extracted_data = {

@@ -22,7 +22,7 @@ const PreviewScreen = ({ route, navigation }) => {
     if (rawUrl.includes('docs.google.com/gview')) {
       return rawUrl;
     }
-    return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(rawUrl)}`;
+    return `https://docs.google.com/gview?embedded=true&url=${(rawUrl)}`;
   };
 
   const targetUrl = getTargetUrl();
@@ -33,7 +33,7 @@ const PreviewScreen = ({ route, navigation }) => {
 
 
   return (
-    <Base hasHeader={false} activeTab={0} headerTitle="Preview">
+    <Base hasHeader={false} activeTab={0} headerTitle="Preview" link={targetUrl}>
       <View className="flex-1 bg-slate-50">
         {targetUrl ? (
           <WebView

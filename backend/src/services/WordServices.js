@@ -14,7 +14,7 @@ import Document from "../models/DocumentModel.js";
 import CloudServices from "./CloudServices.js";
 import { generateDynamicTemplate } from "../AIServices/templateService.js";
 
-export const createDocxFile = async ({ title, paragraphs = [], extractedData = {}, prefix = "template" }) => {
+export const createDocxFile = async ({ title, paragraphs = [], extractedData = {}, prefix = "template", signature = null, signatures = [] }) => {
   const processedParagraphs = (paragraphs || []).map((line) => {
     let formattedLine = line;
     Object.keys(extractedData || {}).forEach((key) => {
@@ -24,82 +24,79 @@ export const createDocxFile = async ({ title, paragraphs = [], extractedData = {
     return formattedLine;
   });
 
-  // Trích xuất hoặc giữ nguyên biến ngày tháng địa danh theo bố cục
   const diaDanh = extractedData.dia_danh || extractedData.dia_diem_lam_don || "{{dia_danh}}";
   const ngay = extractedData.ngay || "{{ngay}}";
   const thang = extractedData.thang || "{{thang}}";
   const nam = extractedData.nam || "{{nam}}";
   const tenNguoiLamDon = extractedData.ten_nguoi_lam_don || extractedData.ho_ten || "";
 
-  // Bảng chữ ký 2 cột (Cột trái trống, Cột phải chứa ngày tháng + chức danh)
-  const signatureTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ text: "" })],
-          }),
-          new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 120 },
-                children: [
-                  new TextRun({
-                    text: `${diaDanh}, ngày ${ngay} tháng ${thang} năm ${nam}`,
-                    italics: true,
-                    size: 24,
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: "NGƯỜI LÀM ĐƠN",
-                    bold: true,
-                    size: 24,
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: "(Ký và ghi rõ họ tên)",
-                    italics: true,
-                    size: 22,
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 800 },
-                children: [
-                  new TextRun({
-                    text: tenNguoiLamDon,
-                    bold: true,
-                    size: 24,
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
+  const resolveSignatureField = (placeholder) => {
+    if (!placeholder) return "";
+    const key = placeholder.replace(/[{}]/g, "");
+    return extractedData[key] || "";
+  };
+
+  const buildSignatureBlock = (signatureConfig = {}) => {
+    const config = { position: "right", title: "NGƯỜI LÀM ĐƠN", ...signatureConfig };
+    const position = config.position === "left" ? "left" : "right";
+    const dateText = config.date_label || `${diaDanh}, ngày ${ngay} tháng ${thang} năm ${nam}`;
+    const titleText = config.title || "NGƯỜI LÀM ĐƠN";
+    const fixedName = resolveSignatureField(config.name_placeholder) || tenNguoiLamDon;
+    const signatureName = config.name || fixedName;
+
+    const alignment = position === "left" ? AlignmentType.LEFT : AlignmentType.RIGHT;
+
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: {
+        top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      },
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: position === "left" ? 55 : 35, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({ text: "" })],
+            }),
+            new TableCell({
+              width: { size: position === "left" ? 45 : 65, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  alignment,
+                  spacing: { after: 120 },
+                  children: [new TextRun({ text: dateText, italics: true, size: 24 })],
+                }),
+                new Paragraph({
+                  alignment,
+                  children: [new TextRun({ text: titleText, bold: true, size: 24 })],
+                }),
+                new Paragraph({
+                  alignment,
+                  children: [new TextRun({ text: "(Ký và ghi rõ họ tên)", italics: true, size: 22 })],
+                }),
+                new Paragraph({
+                  alignment,
+                  spacing: { before: 800 },
+                  children: [new TextRun({ text: signatureName, bold: true, size: 24 })],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  const signatureBlocks = Array.isArray(signatures) && signatures.length > 0
+    ? signatures.filter((item) => item?.enabled !== false).map((item) => buildSignatureBlock(item))
+    : signature && signature.enabled !== false
+      ? [buildSignatureBlock(signature)]
+      : [buildSignatureBlock({ title: "NGƯỜI LÀM ĐƠN", position: "right" })];
 
   const doc = new DocxDocument({
     sections: [
@@ -138,7 +135,7 @@ export const createDocxFile = async ({ title, paragraphs = [], extractedData = {
               })
           ),
           new Paragraph({ spacing: { before: 200 }, children: [] }),
-          signatureTable,
+          ...signatureBlocks,
         ],
       },
     ],
@@ -154,13 +151,14 @@ export const createDocxFile = async ({ title, paragraphs = [], extractedData = {
 export const createWithDynamicTemplate = async ({ prompt, userId }) => {
   const dynamicTpl = await generateDynamicTemplate(prompt);
 
-  // Khắc phục lỗi: dùng dynamicTpl.name thay vì dynamicTpl.templateTitle
   const templateTitle = dynamicTpl.name || "ĐƠN ĐỀ NGHỊ";
 
   const { cloudUrl } = await createDocxFile({
     title: templateTitle,
     paragraphs: dynamicTpl.paragraphs,
     extractedData: dynamicTpl.extractedData,
+    signature: dynamicTpl.signature,
+    signatures: dynamicTpl.signatures,
     prefix: "preview_template",
   });
 

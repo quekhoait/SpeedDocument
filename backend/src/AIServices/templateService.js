@@ -1,7 +1,13 @@
 import { ai, Type } from "../utils/aiconfig.js";
 import dotenv from "dotenv";
+import { readFile } from "node:fs/promises";
 
 dotenv.config();
+
+const loadSystemInstruction = async () => {
+  const filePath = new URL("../../promt.txt", import.meta.url);
+  return readFile(filePath, "utf8");
+};
 
 const templateFieldSchema = {
   type: Type.OBJECT,
@@ -15,13 +21,22 @@ const templateFieldSchema = {
   required: ["field_key", "field_label", "field_type", "is_required", "question"],
 };
 
-export const generateDynamicTemplate = async (prompt) => {
-  const systemInstruction = `Bạn là chuyên gia soạn thảo văn bản hành chính Việt Nam.
-Nhiệm vụ:
-1. Tạo MẪU VĂN BẢN chuẩn có chứa các placeholder dạng {{field_key}} (snake_case, không dấu).
-2. 'paragraphs': Mảng các dòng văn bản (chỉ chứa Kính gửi, nội dung, lý do, cam đoan; KHÔNG chứa Quốc hiệu, Tiêu ngữ, Ngày tháng, Chữ ký).
-3. 'extractedData': Bóc tách thông tin người dùng ĐÃ CÓ trong prompt ban đầu. Nếu chưa có để "".`;
+const signatureSchema = {
+  type: Type.OBJECT,
+  properties: {
+    enabled: { type: Type.BOOLEAN },
+    position: { type: Type.STRING },
+    title: { type: Type.STRING },
+    date_label: { type: Type.STRING },
+    signature_placeholder: { type: Type.STRING },
+    name_placeholder: { type: Type.STRING },
+    name: { type: Type.STRING },
+  },
+  required: ["enabled", "position", "title"],
+};
 
+export const generateDynamicTemplate = async (prompt) => {
+  const systemInstruction = await loadSystemInstruction();
   const response = await ai.models.generateContent({
        model: process.env.MODEL_AI,
     contents: prompt,
@@ -36,6 +51,8 @@ Nhiệm vụ:
           description: { type: Type.STRING },
           paragraphs: { type: Type.ARRAY, items: { type: Type.STRING } },
           fields: { type: Type.ARRAY, items: templateFieldSchema },
+          signature: signatureSchema,
+          signatures: { type: Type.ARRAY, items: signatureSchema },
           extractedData: { type: Type.OBJECT },
           missingFields: {
             type: Type.ARRAY,
@@ -51,7 +68,7 @@ Nhiệm vụ:
           },
           isComplete: { type: Type.BOOLEAN },
         },
-        required: ["name", "description", "paragraphs", "fields", "extractedData", "missingFields", "isComplete"],
+        required: ["name", "description", "paragraphs", "fields", "signature", "signatures", "extractedData", "missingFields", "isComplete"],
       },
     },
   });
@@ -60,11 +77,7 @@ Nhiệm vụ:
 };
 
 export const refineDynamicTemplate = async ({ currentTemplate, feedbackPrompt }) => {
-  const systemInstruction = `Bạn là chuyên gia soạn thảo mẫu văn bản hành chính Việt Nam.
-Nhiệm vụ:
-- Dựa trên MẪU VĂN BẢN HIỆN TẠI và YÊU CẦU ĐIỀU CHỈNH, cập nhật lại cấu trúc mẫu.
-- Cập nhật 'paragraphs' (giữ nguyên placeholder dạng {{field_key}}).
-- Cập nhật danh sách 'fields'. KHÔNG bóc tách thông tin cá nhân ở bước này.`;
+  const systemInstruction = await loadSystemInstruction();
 
   const response = await ai.models.generateContent({
        model: process.env.MODEL_AI,
@@ -80,8 +93,10 @@ Nhiệm vụ:
           description: { type: Type.STRING },
           paragraphs: { type: Type.ARRAY, items: { type: Type.STRING } },
           fields: { type: Type.ARRAY, items: templateFieldSchema },
+          signature: signatureSchema,
+          signatures: { type: Type.ARRAY, items: signatureSchema },
         },
-        required: ["name", "description", "paragraphs", "fields"],
+        required: ["name", "description", "paragraphs", "fields", "signature", "signatures"],
       },
     },
   });

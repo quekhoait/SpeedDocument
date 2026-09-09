@@ -5,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import BackHeader from '../components/BackHeaderComponent';
 
-const Base = ({ children, headerTitle, activeTab = 0, hasHeader, hasNav }) => {
+const Base = ({ children, headerTitle, activeTab = 0, hasHeader, hasNav, link=null }) => {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      {hasHeader ? <Header title={headerTitle} /> : <BackHeader title={headerTitle} />}
+      {hasHeader ? <Header title={headerTitle} /> : <BackHeader title={headerTitle} link={link}/>}
       <View style={{ flex: 1 }}>
         {children}
       </View>

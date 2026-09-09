@@ -12,8 +12,6 @@ const Document = sequelize.define('Document', {
     file_pdf: { type: DataTypes.STRING(255), allowNull: true },
     template_id: { type: DataTypes.INTEGER, allowNull: true },
     user_id: { type: DataTypes.INTEGER, allowNull: true },
-    // #thêm document để biết tạo từ voice hay vuieet
-    // type: {type: DataTypes.BOOLEAN, allowNull: true}, //Dúng là viết, sai là voice
     signature: { type: DataTypes.JSON, allowNull: true },
 }, {
     tableName: 'document',
