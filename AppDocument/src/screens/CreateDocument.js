@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { FileText, Mic, PenTool, ArrowRight } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import Base from "../layout/Base";
 import ButtonComponent from "../components/ButtonComponent";
@@ -57,9 +57,11 @@ const CreateDocumentScreen = () => {
     }
   };
 
-  useEffect(() => {
+ useFocusEffect(
+  useCallback(() => {
     fetchDocuments();
-  }, []);
+  }, [])
+);
 
   const loadSignature = async (documentId) => {
     try {
@@ -147,6 +149,33 @@ const CreateDocumentScreen = () => {
     } catch (error) {
       console.error("Lỗi khi ký tài liệu:", error);
       Alert.alert("Lỗi", "Đã xảy ra lỗi kết nối với máy chủ khi gửi chữ ký.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveSignature = async (signature) => {
+    const targetDocId = selectedDoc?.id;
+    if (!targetDocId) {
+      throw new Error("Không tìm thấy tài liệu cần ký!");
+    }
+
+    setIsSaving(true);
+    try {
+      const token = await getToken();
+      const response = await documentServices.updateSignature(
+        token,
+        targetDocId,
+        signature,
+      );
+      const resData = response?.data;
+
+      if (resData && (resData.status === "OK" || response?.status === 200)) {
+        await loadSignature(targetDocId);
+        fetchDocuments();
+      } else {
+        throw new Error(resData?.message || "Không thể lưu chữ ký!");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -326,6 +355,7 @@ const CreateDocumentScreen = () => {
       <SignatureModal
         visible={modalVisible}
         onClose={handleCloseSignature}
+        onConfirm={handleSaveSignature}
         isSaving={isSaving}
         selectedDoc={selectedDoc}
       />

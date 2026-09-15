@@ -14,4 +14,5 @@ router.get("/get-all", DocumentController.getAllDocument)
 router.get("/:id", authMiddleWare.verifyToken, DocumentController.getDocumentById);
 
 
+
 export default router;

@@ -229,11 +229,14 @@ const getAllDocument = async (req, res) => {
   }
 };
 
+
+
 export default {getDocumentById,
   processDocumentChat,
   getDocumentByUserId,
   writeSignature,
   updateDocument,
   searchTemplateByPrompt,
-   getAllDocument
+  getAllDocument,
+
 };

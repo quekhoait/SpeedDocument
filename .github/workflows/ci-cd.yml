@@ -1,20 +1,19 @@
 name: SpeedDocument CI/CD
 
-# Định nghĩa thời điểm workflow này tự động chạy
+# Kích hoạt workflow khi push hoặc mở PR vào nhánh main / master
 on:
   push:
-    branches: [ "main", "master" ] # Chạy khi bạn push code lên nhánh main hoặc master
+    branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
 
 jobs:
-  # Job 1: Kiểm tra và Build Backend (Node.js / Express)
+  # ================= CI: BACKEND =================
   backend-ci:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,15 +28,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Build / Test (nếu có script build)
+      - name: Run Build / Test
         run: npm run build --if-present
 
+  # ================= CI: ADMIN (REACT) =================
   admin-ci:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./speeddocument-admin # Trỏ vào thư mục admin của bạn
-
+        working-directory: ./speeddocument-admin
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,3 +53,20 @@ jobs:
 
       - name: Build React Admin
         run: npm run build
+
+  deploy:
+    needs: [backend-ci, admin-ci] 
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /path/to/SpeedDocument
+            git pull origin main
+            docker compose down

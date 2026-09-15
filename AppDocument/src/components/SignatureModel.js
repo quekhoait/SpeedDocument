@@ -18,8 +18,7 @@ const SignatureModal = ({ visible, onClose, onConfirm, title = "Ký tên xác nh
       Alert.alert("Thông báo", "Vui lòng vẽ chữ ký!");
       return;
     }
-
-    setIsSaving(true);
+     setIsSaving(true);
     try {
       await onConfirm(base64);
       setIsLandscape(false);
