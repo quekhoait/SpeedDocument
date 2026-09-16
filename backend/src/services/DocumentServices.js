@@ -128,7 +128,10 @@ const getTemplateByPrompt = async (userId, prompt) => {
         EX: SEARCH_CACHE_TTL,
       });
       const templateCacheKey = `cache:template_detail:${template.id}`;
-      await redisClient.set(templateCacheKey, JSON.stringify(template.toJSON()), {
+      const templateData = typeof template.toJSON === "function"
+        ? template.toJSON()
+        : template;
+      await redisClient.set(templateCacheKey, JSON.stringify(templateData), {
         EX: TEMPLATE_CACHE_TTL,
       });
     }
@@ -451,6 +454,5 @@ export default {
   getDocumentByUserId,
   writeSignature,
   updateSignature,
-  getAllDocument,
-  removeDocument
+  getAllDocument
 };

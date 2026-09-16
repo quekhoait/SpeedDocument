@@ -108,6 +108,16 @@ export const setupDocumentMockEnvironment = async () => {
     __esModule: true,
   }));
 
+  const mockRedisClient = {
+    isOpen: false,
+    get: jest.fn(),
+    set: jest.fn(),
+  };
+  await jest.unstable_mockModule('../../src/utils/redis.js', () => ({
+    default: mockRedisClient,
+    __esModule: true,
+  }));
+
   // 3. Database & Models
   const mockSequelize = {
     literal: jest.fn((str) => str),
@@ -163,6 +173,7 @@ export const setupDocumentMockEnvironment = async () => {
       mockPdfServices,
       mockEmbedding,
       mockDocumentAIService,
+      mockRedisClient,
       mockSequelize,
       mockTemplate,
       mockDocument,

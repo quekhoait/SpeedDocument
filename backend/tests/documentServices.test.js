@@ -42,9 +42,7 @@ describe('DocumentServices Unit Tests', () => {
     jest.clearAllMocks();
   });
 
-  // ==========================================
-  // getTemplateByPrompt()
-  // ==========================================
+
   describe('getTemplateByPrompt()', () => {
     it('trả về NEED_DOCUMENT_TYPE nếu AI không nhận diện được loại văn bản', async () => {
       mockDocumentAIService.analyzeDocumentRequest.mockResolvedValue({
