@@ -47,9 +47,6 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     jest.clearAllMocks();
   });
 
-  // ==========================================
-  // Category Methods
-  // ==========================================
   describe('Category Methods', () => {
     it('createCategoryTemplate() tạo danh mục mới', async () => {
       mockTemplateCategory.create.mockResolvedValue(templateTestData.category);
@@ -69,9 +66,7 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // Query Template Methods
-  // ==========================================
+
   describe('Query Template Methods', () => {
     it('getTemplates() lấy tất cả template active khi không truyền cateId và kw', async () => {
       mockTemplate.findAll.mockResolvedValue([templateTestData.templateRecord]);
@@ -201,9 +196,7 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // Word Parsing & Extraction
-  // ==========================================
+
   describe('Word Parsing & Extraction', () => {
     it('getFieldTemplate() ném lỗi nếu không truyền input', async () => {
       await expect(getFieldTemplate(null)).rejects.toThrow('Không có file để đọc');
@@ -382,9 +375,6 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // updateField
-  // ==========================================
   describe('updateField()', () => {
     it('trả về ERR nếu không tìm thấy field', async () => {
       mockTemplateField.findByPk.mockResolvedValue(null);
@@ -416,9 +406,7 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // getFieldByTemplateId
-  // ==========================================
+
   describe('getFieldByTemplateId()', () => {
     it('trả về mảng rỗng nếu không tìm thấy template', async () => {
       mockTemplate.findByPk.mockResolvedValue(null);
@@ -448,9 +436,7 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // removeSoftTemplate
-  // ==========================================
+
   describe('removeSoftTemplate()', () => {
     it('ném lỗi nếu template không tồn tại', async () => {
       mockTemplate.findByPk.mockResolvedValue(null);
@@ -478,9 +464,7 @@ describe('TemplateServices Unit Tests - 100% Coverage', () => {
     });
   });
 
-  // ==========================================
-  // updateTemplate
-  // ==========================================
+
   describe('updateTemplate()', () => {
     it('ném lỗi nếu không tìm thấy template', async () => {
       mockTemplate.findByPk.mockResolvedValue(null);

@@ -45,7 +45,6 @@ const Nav = ({ activeTab = 0 }) => {
           const isActive = activeTab === item.id
           const IconComponent = item.icon
 
-          // Nếu là tab Tài khoản (id = 2) và đã đăng nhập -> Hiển thị username
           const displayLabel =
             item.id === 2 && currentUser?.username
               ? currentUser.username

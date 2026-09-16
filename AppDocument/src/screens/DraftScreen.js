@@ -49,7 +49,6 @@ const DraftScreen = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [document, setDocument] = useState(null);
 
-  // Quản lý giai đoạn (Phase)
   const [currentPhase, setCurrentPhase] = useState("FILLING_DATA"); // 'TEMPLATE_DRAFTING' | 'FILLING_DATA'
   const [dynamicTemplateData, setDynamicTemplateData] = useState(null);
   const [dynamicFileUrl, setDynamicFileUrl] = useState(null);
@@ -87,7 +86,6 @@ const DraftScreen = () => {
         setIsComplete(Boolean(docData.status));
 
         const draftInfo = docData.extracted_data?._templateDraft;
-        // Nếu template_id === null -> Đang ở Phase DRAFTING
         if (docData.template_id === null && draftInfo) {
           setCurrentPhase("TEMPLATE_DRAFTING");
           setDynamicTemplateData(draftInfo);
@@ -129,7 +127,6 @@ const DraftScreen = () => {
     }, [route.params?.documentId, route.params?.template])
   );
 
-  // Realtime Firebase Listener
   useEffect(() => {
     if (!sessionId) return;
     const unsubscribe = subscribeChatMessages(sessionId, (messages) => {
@@ -163,18 +160,15 @@ const DraftScreen = () => {
       const response = await templateService.createTemplate(token, payload);
 
       if (response?.data?.status === "OK" || response?.status === 201 || response?.status === 200) {
-        // 1. Chuyển sang Phase điền thông tin
         setCurrentPhase("FILLING_DATA");
 
-        // 2. Chèn 1 tin nhắn System Message vào giữa
         await saveChatMessage(
           sessionId,
           "system_info",
-          `✅ Mẫu "${dynamicTemplateData.name || dynamicTemplateData.title}" đã được lưu vào hệ thống thành công!`,
+          `Mẫu "${dynamicTemplateData.name || dynamicTemplateData.title}" đã được lưu vào hệ thống thành công!`,
           []
         );
 
-        // 3. AI gửi lời chào bước điền thông tin
         const fieldsToAsk = (dynamicTemplateData.fields || []).map((f) => ({
           field_key: f.field_key,
           field_label: f.field_label,
@@ -200,7 +194,6 @@ const DraftScreen = () => {
     }
   };
 
-  // Gửi tin nhắn xử lý AI
   const handleProcessAI = async (textToSend = null) => {
     const promptToSend = (textToSend || inputText).trim();
     if (!promptToSend || loading) return;
@@ -230,7 +223,6 @@ const DraftScreen = () => {
       const phaseFromApi = resData?.phase || "FILLING_DATA";
       setCurrentPhase(phaseFromApi);
 
-      // Nếu đang trong Phase tạo/sửa mẫu động
       if (phaseFromApi === "TEMPLATE_DRAFTING") {
         setDynamicTemplateData(resData.templateData);
         setDynamicFileUrl(resData.fileUrl);
@@ -272,7 +264,6 @@ const DraftScreen = () => {
     const isSystem = item.sender === "system_info" || item.type === "system_info";
     const isLastMessage = index === conversation.length - 1;
 
-    // 1. Render TIN NHẮN HỆ THỐNG (Nằm giữa, màu xám nhạt)
     if (isSystem) {
       return (
         <View style={{ alignItems: "center", marginVertical: 10, paddingHorizontal: 20 }}>
@@ -285,7 +276,6 @@ const DraftScreen = () => {
       );
     }
 
-    // 2. Render TIN NHẮN NGƯỜI DÙNG & AI
     return (
       <View
         style={{
@@ -331,7 +321,6 @@ const DraftScreen = () => {
             </Text>
           </View>
 
-          {/* KHỐI NÚT TRONG GIAI ĐOẠN SỬA MẪU (TEMPLATE_DRAFTING) */}
           {!isUser && isLastMessage && currentPhase === "TEMPLATE_DRAFTING" && dynamicTemplateData && (
             <View
               style={{
@@ -348,7 +337,7 @@ const DraftScreen = () => {
                 Bản nháp mẫu: {dynamicTemplateData.name || dynamicTemplateData.title}
               </Text>
               <Text style={{ fontSize: 12, color: "#78350F", marginBottom: 10 }}>
-                💡 Hãy chat các yêu cầu chỉnh sửa nếu chưa ưng ý. Khi mẫu đã đạt, bấm nút xác nhận bên dưới.
+                Hãy chat các yêu cầu chỉnh sửa nếu chưa ưng ý. Khi mẫu đã đạt, bấm nút xác nhận bên dưới.
               </Text>
 
               <View style={{ flexDirection: "row", gap: 8 }}>
@@ -386,7 +375,7 @@ const DraftScreen = () => {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={{ color: "#FFFFFF", fontWeight: "bold", fontSize: 12 }}>
-                      ⭐ Xác nhận & Lưu mẫu
+                      Xác nhận & Lưu mẫu
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -439,7 +428,7 @@ const DraftScreen = () => {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 13 }}>📄 Xem trước văn bản ngay</Text>
+              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 13 }}>Xem trước văn bản ngay</Text>
             </TouchableOpacity>
           )}
         </View>
